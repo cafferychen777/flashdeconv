@@ -116,17 +116,20 @@ class FlashDeconv:
 
     def _preprocess_data(
         self,
-        Y: np.ndarray,
+        Y: ArrayLike,
         X: np.ndarray,
         method: PreprocessMethod,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> Tuple[ArrayLike, np.ndarray]:
         """
         Preprocess Y and X matrices.
 
+        Supports sparse Y matrices for memory efficiency.
+        Key insight: log1p(0) = 0, so sparsity is preserved.
+
         Parameters
         ----------
-        Y : ndarray of shape (n_spots, n_genes)
-            Spatial count matrix.
+        Y : array-like of shape (n_spots, n_genes)
+            Spatial count matrix (sparse or dense).
         X : ndarray of shape (n_cell_types, n_genes)
             Reference signature matrix.
         method : {"log_cpm", "pearson", "raw"}
@@ -134,16 +137,35 @@ class FlashDeconv:
 
         Returns
         -------
-        Y_norm : ndarray
-            Preprocessed Y matrix.
+        Y_norm : array-like
+            Preprocessed Y matrix (sparse if input was sparse, for log_cpm).
         X_norm : ndarray
             Preprocessed X matrix.
         """
+        from scipy.sparse import diags, issparse
+
         if method == "log_cpm":
             # CPM normalization + log1p (recommended)
-            Y_cpm = Y / (Y.sum(axis=1, keepdims=True) + 1e-10) * 1e4
+            # Supports sparse matrices efficiently
+
+            if issparse(Y):
+                # Sparse-friendly implementation
+                lib_size = np.array(Y.sum(axis=1)).flatten()
+                lib_size[lib_size == 0] = 1.0
+                D = diags(1e4 / lib_size)
+                Y_cpm = D @ Y
+                # Log1p on non-zero values only (preserves sparsity)
+                Y_norm = Y_cpm.copy()
+                Y_norm.data = np.log1p(Y_norm.data)
+            else:
+                Y_cpm = Y / (Y.sum(axis=1, keepdims=True) + 1e-10) * 1e4
+                Y_norm = np.log1p(Y_cpm)
+
+            # X is always small, dense is fine
             X_cpm = X / (X.sum(axis=1, keepdims=True) + 1e-10) * 1e4
-            return np.log1p(Y_cpm), np.log1p(X_cpm)
+            X_norm = np.log1p(X_cpm)
+
+            return Y_norm, X_norm
 
         elif method == "pearson":
             # Uncentered Pearson residuals: divide by σ only (no centering)
@@ -236,11 +258,10 @@ class FlashDeconv:
         if self.verbose:
             print(f"  Selected {n_selected} genes (HVG + markers)")
 
-        # Subset to selected genes
-        if sparse.issparse(Y):
-            Y_subset = Y[:, gene_idx].toarray()
-        else:
-            Y_subset = Y[:, gene_idx]
+        # Subset to selected genes (keep sparse if input was sparse)
+        Y_subset = Y[:, gene_idx]
+        if sparse.issparse(Y_subset) and not sparse.isspmatrix_csr(Y_subset):
+            Y_subset = Y_subset.tocsr()  # Ensure CSR for efficient row operations
         X_subset = X[:, gene_idx]
 
         # Step 2: Preprocessing

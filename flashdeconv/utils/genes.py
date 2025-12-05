@@ -9,6 +9,7 @@ This module implements feature selection for structure-preserving sketching:
 
 import numpy as np
 from scipy import sparse
+from scipy.sparse import diags
 from typing import Union, Optional, Tuple, List
 
 ArrayLike = Union[np.ndarray, sparse.spmatrix]
@@ -24,10 +25,14 @@ def select_hvg(
     """
     Select highly variable genes using the Seurat v3 method.
 
+    Supports both sparse and dense input matrices. For sparse matrices,
+    operations are performed without converting to dense, preserving
+    memory efficiency. Key insight: log1p(0) = 0, so sparsity is preserved.
+
     Parameters
     ----------
     Y : array-like of shape (n_spots, n_genes)
-        Raw count matrix.
+        Raw count matrix (sparse or dense).
     n_top : int, default=2000
         Number of top HVGs to select.
     min_mean : float, default=0.0125
@@ -42,25 +47,44 @@ def select_hvg(
     hvg_idx : ndarray of shape (n_hvg,)
         Indices of highly variable genes.
     """
-    # Convert to dense if sparse
+    N, n_genes = Y.shape
+
     if sparse.issparse(Y):
-        Y_dense = Y.toarray()
+        # Sparse-friendly implementation (memory efficient)
+        # Key insight: log1p(0) = 0, so sparsity is preserved!
+
+        # Step 1: Row normalize using diagonal matrix multiplication
+        lib_size = np.array(Y.sum(axis=1)).flatten()
+        lib_size = np.maximum(lib_size, 1.0)
+        D = diags(10000.0 / lib_size)
+        Y_norm = D @ Y  # Still sparse!
+
+        # Step 2: Log1p transform - zeros stay zeros!
+        Y_log = Y_norm.copy()
+        Y_log.data = np.log1p(Y_log.data)
+
+        # Step 3: Compute mean and variance per gene
+        gene_means = np.array(Y_log.mean(axis=0)).flatten()
+        mean_sq = np.array(Y_log.power(2).mean(axis=0)).flatten()
+        # Sample variance (ddof=1): Var = N/(N-1) * (E[X^2] - E[X]^2)
+        gene_vars = N / (N - 1) * (mean_sq - gene_means ** 2)
+        gene_vars = np.maximum(gene_vars, 0)  # numerical stability
+
     else:
+        # Dense implementation (original)
         Y_dense = np.asarray(Y)
 
-    n_genes = Y_dense.shape[1]
+        # Normalize by total counts
+        total_counts = np.sum(Y_dense, axis=1, keepdims=True)
+        total_counts = np.maximum(total_counts, 1)
+        Y_norm = Y_dense / total_counts * 10000
 
-    # Normalize by total counts
-    total_counts = np.sum(Y_dense, axis=1, keepdims=True)
-    total_counts = np.maximum(total_counts, 1)
-    Y_norm = Y_dense / total_counts * 10000  # Scale to 10k counts
+        # Log transform
+        Y_log = np.log1p(Y_norm)
 
-    # Log transform
-    Y_log = np.log1p(Y_norm)
-
-    # Compute mean and variance
-    gene_means = np.mean(Y_log, axis=0)
-    gene_vars = np.var(Y_log, axis=0, ddof=1)
+        # Compute mean and variance
+        gene_means = np.mean(Y_log, axis=0)
+        gene_vars = np.var(Y_log, axis=0, ddof=1)
 
     # Compute standardized dispersion
     # Bin genes by mean expression

@@ -170,7 +170,7 @@ def build_sparse_rademacher_matrix(
 
 
 def project_to_sketch(
-    Y_tilde: np.ndarray,
+    Y_tilde: Union[np.ndarray, sparse.spmatrix],
     X_tilde: np.ndarray,
     Omega: sparse.spmatrix,
 ) -> Tuple[np.ndarray, np.ndarray]:
@@ -180,10 +180,13 @@ def project_to_sketch(
     Y_sketch = Y_tilde @ Omega  (N x d)
     X_sketch = X_tilde @ Omega  (K x d)
 
+    Supports sparse Y_tilde for memory efficiency. The output is always
+    dense since the sketch dimension d is small.
+
     Parameters
     ----------
-    Y_tilde : ndarray of shape (n_spots, n_genes)
-        Transformed spatial data (Pearson residuals).
+    Y_tilde : array-like of shape (n_spots, n_genes)
+        Transformed spatial data (sparse or dense).
     X_tilde : ndarray of shape (n_cell_types, n_genes)
         Transformed reference signatures.
     Omega : sparse matrix of shape (n_genes, sketch_dim)
@@ -192,7 +195,7 @@ def project_to_sketch(
     Returns
     -------
     Y_sketch : ndarray of shape (n_spots, sketch_dim)
-        Projected spatial data.
+        Projected spatial data (always dense).
     X_sketch : ndarray of shape (n_cell_types, sketch_dim)
         Projected reference signatures.
     """
@@ -200,17 +203,23 @@ def project_to_sketch(
     if sparse.issparse(Omega):
         Omega = Omega.tocsr()
 
-    # Project spatial data
+    # Project spatial data (sparse @ sparse works efficiently)
     Y_sketch = Y_tilde @ Omega
+
+    # Ensure output is dense (needed for downstream BCD solver)
+    if sparse.issparse(Y_sketch):
+        Y_sketch = Y_sketch.toarray()
 
     # Project reference
     X_sketch = X_tilde @ Omega
+    if sparse.issparse(X_sketch):
+        X_sketch = X_sketch.toarray()
 
     return Y_sketch, X_sketch
 
 
 def sketch_data(
-    Y_tilde: np.ndarray,
+    Y_tilde: Union[np.ndarray, sparse.spmatrix],
     X_tilde: np.ndarray,
     sketch_dim: int = 512,
     leverage_scores: Optional[np.ndarray] = None,
