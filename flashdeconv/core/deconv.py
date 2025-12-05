@@ -153,9 +153,8 @@ class FlashDeconv:
                 lib_size = np.array(Y.sum(axis=1)).flatten()
                 lib_size[lib_size == 0] = 1.0
                 D = diags(1e4 / lib_size)
-                Y_cpm = D @ Y
-                # Log1p on non-zero values only (preserves sparsity)
-                Y_norm = Y_cpm.copy()
+                Y_norm = D @ Y
+                # Log1p in-place on non-zero values (preserves sparsity, no copy!)
                 Y_norm.data = np.log1p(Y_norm.data)
             else:
                 Y_cpm = Y / (Y.sum(axis=1, keepdims=True) + 1e-10) * 1e4

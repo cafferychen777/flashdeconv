@@ -59,13 +59,21 @@ def select_hvg(
         D = diags(10000.0 / lib_size)
         Y_norm = D @ Y  # Still sparse!
 
-        # Step 2: Log1p transform - zeros stay zeros!
-        Y_log = Y_norm.copy()
-        Y_log.data = np.log1p(Y_log.data)
+        # Step 2: Log1p transform in-place - zeros stay zeros!
+        # No copy needed: directly modify .data array
+        Y_norm.data = np.log1p(Y_norm.data)
 
-        # Step 3: Compute mean and variance per gene
-        gene_means = np.array(Y_log.mean(axis=0)).flatten()
-        mean_sq = np.array(Y_log.power(2).mean(axis=0)).flatten()
+        # Step 3: Compute mean and variance per gene (memory-efficient)
+        # Use sum instead of mean to avoid scipy's internal dense conversion
+        gene_sums = np.array(Y_norm.sum(axis=0)).flatten()
+        gene_means = gene_sums / N
+
+        # Compute E[X^2] without creating power(2) matrix copy
+        # bincount efficiently computes column-wise sum of squares
+        data_sq = Y_norm.data ** 2  # O(nnz) temporary
+        col_sum_sq = np.bincount(Y_norm.indices, weights=data_sq, minlength=n_genes)
+        mean_sq = col_sum_sq / N
+
         # Sample variance (ddof=1): Var = N/(N-1) * (E[X^2] - E[X]^2)
         gene_vars = N / (N - 1) * (mean_sq - gene_means ** 2)
         gene_vars = np.maximum(gene_vars, 0)  # numerical stability
