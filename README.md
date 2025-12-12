@@ -101,6 +101,7 @@ FlashDeconv introduces a three-stage framework:
 | `k_neighbors` | 6 | Neighbors for spatial graph |
 | `max_iter` | 100 | Maximum BCD iterations |
 | `tol` | 1e-4 | Convergence tolerance |
+| `preprocess` | "log_cpm" | Preprocessing method: "log_cpm", "pearson", or "raw" |
 
 ## Benchmarks
 
@@ -121,7 +122,7 @@ class FlashDeconv:
     def __init__(
         self,
         sketch_dim=512,
-        lambda_spatial="auto",
+        lambda_spatial=5000.0,   # or "auto" for automatic tuning
         rho_sparsity=0.01,
         n_hvg=2000,
         n_markers_per_type=50,
@@ -129,6 +130,7 @@ class FlashDeconv:
         k_neighbors=6,
         max_iter=100,
         tol=1e-4,
+        preprocess="log_cpm",    # "log_cpm", "pearson", or "raw"
         random_state=None,
         verbose=False,
     ): ...
