@@ -33,11 +33,13 @@ dependencies = [
     "numpy>=1.21",
     "scipy>=1.7",
     "numba>=0.56",
-    "scikit-learn>=1.0",
-    "anndata>=0.8",
 ]
 
 [project.optional-dependencies]
+io = [
+    "anndata>=0.8",
+    "pandas>=1.3",
+]
 dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
@@ -49,7 +51,7 @@ scanpy = [
     "scanpy>=1.9",
 ]
 all = [
-    "flashdeconv[dev,scanpy]",
+    "flashdeconv[io,dev,scanpy]",
 ]
 
 [project.urls]
