@@ -17,6 +17,7 @@ sdist/
 var/
 wheels/
 *.egg-info/
+flashdeconv.egg-info/
 .installed.cfg
 *.egg
 
@@ -30,6 +31,9 @@ ENV/
 .vscode/
 *.swp
 *.swo
+
+# Playwright MCP
+.playwright-mcp/
 
 # Jupyter
 .ipynb_checkpoints/
@@ -50,3 +54,13 @@ Thumbs.db
 # Logs
 *.log
 CARD_repo/
+
+# Development notes (keep locally, don't commit)
+docs/
+CLAUDE.md
+
+# Reproducibility materials (moved to separate repo)
+validation/
+paper/
+data/
+figures/

@@ -1,0 +1,76 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flashdeconv"
+version = "0.1.0"
+description = "Fast Linear Algebra for Scalable Hybrid Deconvolution of Spatial Transcriptomics"
+readme = "README.md"
+license = {text = "GPL-3.0"}
+authors = [
+    {name = "FlashDeconv Team"}
+]
+keywords = [
+    "spatial transcriptomics",
+    "deconvolution",
+    "single-cell",
+    "bioinformatics",
+    "computational biology"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "numpy>=1.21",
+    "scipy>=1.7",
+    "numba>=0.56",
+    "scikit-learn>=1.0",
+    "anndata>=0.8",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "black>=23.0",
+    "isort>=5.0",
+    "mypy>=1.0",
+]
+scanpy = [
+    "scanpy>=1.9",
+]
+all = [
+    "flashdeconv[dev,scanpy]",
+]
+
+[project.urls]
+Homepage = "https://github.com/cafferychen777/flashdeconv"
+Documentation = "https://github.com/cafferychen777/flashdeconv"
+Repository = "https://github.com/cafferychen777/flashdeconv"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["flashdeconv*"]
+
+[tool.black]
+line-length = 100
+target-version = ["py39", "py310", "py311"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
