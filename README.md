@@ -6,12 +6,12 @@ FlashDeconv is a high-performance spatial transcriptomics deconvolution method t
 
 ## Key Features
 
-- **Ultra-fast**: Process 1 million spots in ~10 minutes on CPU
-- **Memory-efficient**: Uses randomized sketching to reduce memory by orders of magnitude
-- **No GPU required**: Runs efficiently on standard laptops
-- **Statistically rigorous**: Handles count data properly via Pearson residuals
-- **Spatially-aware**: Graph Laplacian regularization for spatial coherence
-- **Platform-robust**: Automatic correction for platform effects between scRNA-seq and ST
+- **Ultra-fast**: Process 1 million spots in ~3 minutes on CPU
+- **Memory-efficient**: O(N) linear scaling via structure-preserving sketching
+- **No GPU required**: Runs on commodity hardware (32GB RAM sufficient for 1M spots)
+- **Statistically rigorous**: Log-CPM normalization with leverage-weighted gene selection
+- **Spatially-aware**: Sparse graph Laplacian regularization for spatial coherence
+- **Rare cell detection**: Leverage scores prioritize marker genes over high-variance genes
 
 ## Installation
 
@@ -77,17 +77,17 @@ adata_st.obs["flashdeconv_dominant"]  # Dominant cell type per spot
 
 FlashDeconv introduces a three-stage framework:
 
-### 1. Variance Stabilization & Platform Correction
-- **Pearson Residuals**: Transforms raw counts to Pearson residuals for variance stabilization, handling the Poisson-Gamma mixture distribution of ST data.
-- **Platform Correction**: Estimates and corrects platform-specific gene capture efficiency using a "Pseudo-bulk Ratio" strategy, ensuring compatibility between scRNA-seq references and spatial data.
+### 1. Gene Selection & Preprocessing
+- **Leverage-weighted Gene Selection**: Selects informative genes using leverage scores that prioritize cell-type-specific markers over high-variance genes, enabling accurate detection of rare cell populations.
+- **Log-CPM Normalization**: Default preprocessing that normalizes counts per million and applies log1p transformation for variance stabilization.
 
 ### 2. Structure-Preserving Sketching
-- **CountSketch with Leverage Scores**: Compresses gene dimension (~20,000) to sketch space (~512) using sparse CountSketch.
-- **Importance Sampling**: Weighs genes by their leverage scores (biological importance) to ensure rare cell type markers are preserved with high probability, offering theoretical guarantees via the Johnson-Lindenstrauss lemma.
+- **CountSketch with Importance Sampling**: Compresses gene dimension (~20,000) to sketch space (~512) using sparse random projections weighted by leverage scores.
+- **Theoretical Guarantees**: Preserves distance relationships via Johnson-Lindenstrauss lemma, ensuring rare cell type markers are retained with high probability.
 
 ### 3. Spatial Graph Regularized Optimization
-- **Graph Laplacian Regularization**: Explicitly models spatial autocorrelation, forcing neighboring spots to have similar cell type compositions to denoise "drop-out" events.
-- **Block Coordinate Descent (BCD)**: A Numba-accelerated solver that exploits pre-computed Gram matrices and closed-form updates with non-negativity constraints for extreme speed.
+- **Sparse Graph Laplacian**: O(N) memory complexity via k-NN graph construction, enabling million-scale analysis without dense covariance matrices.
+- **Block Coordinate Descent (BCD)**: Numba-accelerated solver with closed-form updates and non-negativity constraints for extreme speed.
 
 ## Parameters
 
@@ -104,13 +104,13 @@ FlashDeconv introduces a three-stage framework:
 
 ## Benchmarks
 
-| Dataset Size | Cell2location | CARD | FlashDeconv |
-|--------------|---------------|------|-------------|
-| 10K spots | ~1 hour (GPU) | ~30 min | **~30 sec** |
-| 100K spots | ~10 hours (GPU) | OOM | **~3 min** |
-| 1M spots | >24 hours (GPU) | OOM | **~10 min** |
+| Dataset Size | FlashDeconv Runtime | Memory |
+|--------------|---------------------|--------|
+| 10K spots | < 1 sec | < 1 GB |
+| 100K spots | ~4 sec | ~2 GB |
+| 1M spots | ~3 min | ~21 GB |
 
-*Benchmarks on MacBook Air M1 with 8GB RAM (FlashDeconv) vs. NVIDIA A100 GPU (Cell2location)*
+*Benchmarks on Apple MacBook Pro M2 Max with 32GB unified memory (no GPU required). FlashDeconv exhibits O(N) linear scaling for both time and memory.*
 
 ## API Reference
 
@@ -143,12 +143,12 @@ class FlashDeconv:
 
 ### Attributes (after fitting)
 
-- `beta_`: Raw cell type abundances
-- `proportions_`: Normalized proportions (sum to 1)
-- `gene_idx_`: Indices of genes used
-- `lambda_used_`: Actual lambda value used
-- `theta_`: Estimated overdispersion
-- `info_`: Optimization information
+- `beta_`: Raw cell type abundances (n_spots, n_cell_types)
+- `proportions_`: Normalized proportions that sum to 1 (n_spots, n_cell_types)
+- `gene_idx_`: Indices of genes used for deconvolution
+- `lambda_used_`: Actual spatial regularization value used
+- `info_`: Optimization information (converged, n_iterations, final_objective)
+- `cell_type_names_`: Names of cell types (if provided)
 
 ## Citation
 
