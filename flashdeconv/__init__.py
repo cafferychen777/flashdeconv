@@ -14,7 +14,7 @@ Example
 >>> beta = model.fit_transform(adata_st, adata_ref)
 """
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 __author__ = "FlashDeconv Team"
 
 from flashdeconv.core.deconv import FlashDeconv

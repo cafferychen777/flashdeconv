@@ -2,21 +2,34 @@
 
 **Fast Linear Algebra for Scalable Hybrid Deconvolution**
 
-FlashDeconv is a high-performance spatial transcriptomics deconvolution method that estimates cell type proportions from spatial gene expression data using single-cell reference signatures.
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+
+*Unlocking atlas-scale spatial biology with randomized numerical linear algebra.*
+
+FlashDeconv is a high-performance spatial transcriptomics deconvolution method designed for **atlas-scale** and **subcellular-resolution** platforms (Visium HD, Stereo-seq, Xenium). It leverages structure-preserving randomized sketching to estimate cell type proportions with linear scalability—processing **1 million spots in ~3 minutes** on commodity hardware.
+
+> **Paper:** Chen Yang*, Xianyang Zhang*, Jun Chen*. *FlashDeconv enables atlas-scale, multi-resolution spatial deconvolution via structure-preserving sketching*. Preprint, 2025.
+>
+> **Reproducibility:** To reproduce figures and benchmarks from the paper, visit the [flashdeconv-reproducibility](https://github.com/cafferychen777/flashdeconv-reproducibility) repository.
+
+---
 
 ## Key Features
 
-- **Ultra-fast**: Process 1 million spots in ~3 minutes on CPU
-- **Memory-efficient**: O(N) linear scaling via structure-preserving sketching
-- **No GPU required**: Runs on commodity hardware (32GB RAM sufficient for 1M spots)
-- **Statistically rigorous**: Log-CPM normalization with leverage-weighted gene selection
-- **Spatially-aware**: Sparse graph Laplacian regularization for spatial coherence
-- **Rare cell detection**: Leverage scores prioritize marker genes over high-variance genes
+- **Ultra-fast & Scalable:** Deconvolve **1 million spots in ~3 minutes**. Time and memory scale linearly O(N) with dataset size.
+- **Hardware Friendly:** No GPU required. Runs efficiently on laptops (e.g., 32GB RAM handles 1M spots).
+- **Rare Cell Detection:** Uses **leverage-score sampling** to preserve transcriptomically distinct but low-abundance cell types (e.g., Tuft cells, endothelial cells) that variance-based methods systematically miss.
+- **Spatially Aware:** Sparse graph Laplacian regularization ensures spatial coherence without the O(N²) cost of dense kernel methods.
+- **Visium HD Ready:** Specifically optimized for the extreme sparsity and scale of subcellular resolution technologies (2µm–16µm bin sizes).
+- **Statistically Rigorous:** Log-CPM normalization with leverage-weighted gene selection preserves both common and rare cell populations.
+
+---
 
 ## Installation
 
 ```bash
-# From source
+# From source (recommended for latest features)
 git clone https://github.com/cafferychen777/flashdeconv.git
 cd flashdeconv
 pip install -e .
@@ -24,94 +37,153 @@ pip install -e .
 # With development dependencies
 pip install -e ".[dev]"
 
-# With scanpy integration
-pip install -e ".[scanpy]"
+# With scanpy/anndata integration
+pip install -e ".[io]"
 ```
+
+**Requirements:** Python ≥ 3.8, numpy, scipy, numba. Optional: scanpy, anndata for AnnData workflow.
+
+---
 
 ## Quick Start
 
+### 1. The NumPy Way
+
 ```python
+import numpy as np
 from flashdeconv import FlashDeconv
 
-# Initialize model
+# Load your data (example shapes)
+# Y: Spatial count matrix (n_spots × n_genes), can be sparse
+# X: Single-cell reference signatures (n_cell_types × n_genes)
+# coords: Spatial coordinates (n_spots × 2)
+
+# Initialize and run
 model = FlashDeconv(
     sketch_dim=512,       # Sketch dimension (default: 512)
-    lambda_spatial="auto", # Spatial regularization (auto-tuned)
-    rho_sparsity=0.01,    # Sparsity regularization
+    lambda_spatial=5000,  # Spatial regularization strength
+    verbose=True
 )
-
-# Fit and get cell type proportions
 proportions = model.fit_transform(Y, X, coords)
 
-# Y: spatial count matrix (n_spots x n_genes)
-# X: reference signatures (n_cell_types x n_genes)
-# coords: spatial coordinates (n_spots x 2)
+# Returns: (n_spots × n_cell_types) normalized proportions
+print(proportions[:5])
 ```
 
-## With AnnData
+### 2. The Scanpy/AnnData Way
+
+FlashDeconv integrates seamlessly with the `scanpy` ecosystem.
 
 ```python
+import scanpy as sc
 from flashdeconv import FlashDeconv
 from flashdeconv.io import prepare_data, result_to_anndata
 
-# Prepare data from AnnData objects
+# Load data
+adata_st = sc.read_h5ad("visium_hd_slide.h5ad")
+adata_ref = sc.read_h5ad("scrna_reference.h5ad")
+
+# 1. Prepare inputs (auto-aligns genes)
 Y, X, coords, cell_type_names, gene_names = prepare_data(
-    adata_st,           # Spatial AnnData
-    adata_ref,          # Single-cell reference AnnData
-    cell_type_key="cell_type",
+    adata_st,
+    adata_ref,
+    cell_type_key="cell_type"  # Column name in adata_ref.obs
 )
 
-# Run deconvolution
-model = FlashDeconv(verbose=True)
+# 2. Run deconvolution
+model = FlashDeconv(
+    lambda_spatial=5000,  # Adjust based on platform (see Best Practices)
+    verbose=True
+)
 proportions = model.fit_transform(Y, X, coords, cell_type_names=cell_type_names)
 
-# Store results back in AnnData
+# 3. Save results back to AnnData
 adata_st = result_to_anndata(proportions, adata_st, cell_type_names)
 
 # Access results
-adata_st.obsm["flashdeconv"]  # Cell type proportions DataFrame
-adata_st.obs["flashdeconv_dominant"]  # Dominant cell type per spot
+adata_st.obsm["flashdeconv"]         # DataFrame with proportions
+adata_st.obs["flashdeconv_dominant"] # Dominant cell type per spot
+
+# Visualization
+sc.pl.spatial(adata_st, color=["Hepatocyte", "Kupffer_cell"], img_key="hires")
 ```
 
-## Method Overview
+---
 
-FlashDeconv introduces a three-stage framework:
+## Best Practices: Tuning `lambda_spatial`
 
-### 1. Gene Selection & Preprocessing
-- **Leverage-weighted Gene Selection**: Selects informative genes using leverage scores that prioritize cell-type-specific markers over high-variance genes, enabling accurate detection of rare cell populations.
-- **Log-CPM Normalization**: Default preprocessing that normalizes counts per million and applies log1p transformation for variance stabilization.
+While FlashDeconv works well with defaults, **adjusting `lambda_spatial`** (spatial regularization strength) based on your platform's **spot size** and **counts-per-spot** significantly improves results.
 
-### 2. Structure-Preserving Sketching
-- **CountSketch with Importance Sampling**: Compresses gene dimension (~20,000) to sketch space (~512) using sparse random projections weighted by leverage scores.
-- **Theoretical Guarantees**: Preserves distance relationships via Johnson-Lindenstrauss lemma, ensuring rare cell type markers are retained with high probability.
+| Platform | Spot Size | Typical UMI/Spot | Recommended `lambda_spatial` | Rationale |
+|:---------|:----------|:-----------------|:----------------------------|:----------|
+| **Standard Visium** | 55µm | 10,000–30,000 | `1000–10000` (default: 5000) | Strong signal; minimal smoothing needed |
+| **Visium HD (16µm)** | 16µm | 500–2,000 | `5000–20000` | Moderate sparsity; leverage neighbors |
+| **Visium HD (8µm)** | 8µm | 100–500 | `10000–50000` | Very sparse; rely on spatial priors |
+| **Visium HD (2µm)** | 2µm | 10–100 | `50000–100000` | Extreme sparsity; heavy smoothing |
+| **Stereo-seq / Seq-Scope** | 0.5–1µm | 5–50 | `50000–200000` | Single-cell/subcellular resolution; extreme sparsity |
 
-### 3. Spatial Graph Regularized Optimization
-- **Sparse Graph Laplacian**: O(N) memory complexity via k-NN graph construction, enabling million-scale analysis without dense covariance matrices.
-- **Block Coordinate Descent (BCD)**: Numba-accelerated solver with closed-form updates and non-negativity constraints for extreme speed.
+> **Note:**
+> - If cell type maps look **"salt-and-pepper" noisy**, increase `lambda_spatial`
+> - If maps look **overly blurred**, decrease `lambda_spatial`
+> - Use `lambda_spatial="auto"` for automatic tuning (may underestimate for real data; best for initial exploration)
+> - For **non-grid layouts** (e.g., Xenium, MERFISH), set `spatial_method="knn"` (default)
 
-## Parameters
+---
 
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `sketch_dim` | 512 | Dimension of sketch space |
-| `lambda_spatial` | 5000.0 | Spatial regularization strength (use "auto" for automatic tuning) |
-| `rho_sparsity` | 0.01 | L1 sparsity regularization |
-| `n_hvg` | 2000 | Number of highly variable genes |
-| `n_markers_per_type` | 50 | Markers per cell type |
-| `k_neighbors` | 6 | Neighbors for spatial graph |
-| `max_iter` | 100 | Maximum BCD iterations |
-| `tol` | 1e-4 | Convergence tolerance |
-| `preprocess` | "log_cpm" | Preprocessing method: "log_cpm", "pearson", or "raw" |
+## Algorithm Under the Hood
+
+FlashDeconv reformulates spatial deconvolution as **Graph-Regularized Non-Negative Least Squares**, solved in a compressed "sketch" space via randomized numerical linear algebra (RandNLA):
+
+![FlashDeconv Framework](figures/figure1.jpeg)
+**Figure 1. Overview of the FlashDeconv framework.** (A) Input data preprocessing with Log-CPM normalization and gene selection. (B) Structure-preserving randomized sketching using leverage-score weighting to compress gene space while preserving rare cell signals. (C) Spatial graph construction and regularized optimization via Block Coordinate Descent. (D) Final cell type proportion estimates for each spatial location.
+
+### Three-Stage Framework
+
+1. **Preprocessing & Gene Selection**
+   - **Log-CPM normalization**: Stabilizes variance and prevents high-expression genes from dominating the sketch
+   - **Leverage-weighted gene selection**: Combines highly variable genes (HVGs) with cell-type-specific markers, weighted by statistical leverage scores. Unlike variance (which conflates abundance with informativeness), leverage scores identify genes that define **transcriptomically distinct directions**, preserving rare cell type markers.
+
+2. **Structure-Preserving Sketching**
+   - **Randomized projection**: Compress gene space (~20,000 genes → 512 dimensions) using CountSketch with **leverage-score importance sampling**
+   - **Johnson-Lindenstrauss guarantee**: Preserves Euclidean distances between cell type signatures with high probability
+   - **Key innovation**: Leverage-weighted sampling amplifies rare cell type markers relative to housekeeping genes, preventing signal loss during hash collisions
+
+3. **Spatial Graph Regularization**
+   - **Sparse graph Laplacian**: Constructs k-NN spatial graph (O(N) memory vs. O(N²) for dense kernels like CARD)
+   - **Numba-accelerated Block Coordinate Descent (BCD)**: Fast closed-form updates with non-negativity constraints
+   - **Linear scalability**: Spatial term complexity O(N·k) enables million-spot analysis
+
+### Why This Works
+
+- **Log-CPM** bounds dynamic range while preserving sparsity (log1p(0) = 0)
+- **Leverage scores** decouple biological identity from population abundance—markers of rare cell types (0.1% frequency) receive equal weight to abundant types (30% frequency)
+- **Sparse graph Laplacian** encodes spatial autocorrelation as a Gaussian Markov Random Field (GMRF) without dense matrix operations
+
+---
 
 ## Benchmarks
 
-| Dataset Size | FlashDeconv Runtime | Memory |
-|--------------|---------------------|--------|
-| 10K spots | < 1 sec | < 1 GB |
-| 100K spots | ~4 sec | ~2 GB |
-| 1M spots | ~3 min | ~21 GB |
+FlashDeconv exhibits **linear O(N) scaling** for both time and memory:
 
-*Benchmarks on Apple MacBook Pro M2 Max with 32GB unified memory (no GPU required). FlashDeconv exhibits O(N) linear scaling for both time and memory.*
+| Dataset Size | Runtime | Memory | Hardware |
+|:-------------|:--------|:-------|:---------|
+| 10K spots | < 1 sec | < 1 GB | MacBook Pro M2 Max |
+| 100K spots | ~4 sec | ~2 GB | (32GB unified memory) |
+| 1M spots | ~3 min | ~21 GB | No GPU required |
+
+**Accuracy on Synthetic Benchmarks (Spotless suite)**:
+- **Pearson correlation**: 0.944 (mean across 56 datasets spanning 6 tissues)
+- **RMSE**: 0.065 (median)
+- **Rare cell detection (AUPR)**: 0.960 ± 0.036 (standard deviation)
+
+**Real-world validation**:
+- Mouse liver (Visium): JSD = 0.056, ranking 3rd among 13 methods
+- Melanoma tumor (Visium): JSD = 0.027, ranking 5th among 13 methods
+- Reference stability: Ranked 1st for robustness to different scRNA-seq protocols
+
+FlashDeconv matches top-tier Bayesian methods (Cell2Location, RCTD) on accuracy while accelerating inference by **orders of magnitude**.
+
+---
 
 ## API Reference
 
@@ -121,16 +193,16 @@ FlashDeconv introduces a three-stage framework:
 class FlashDeconv:
     def __init__(
         self,
-        sketch_dim=512,
-        lambda_spatial=5000.0,   # or "auto" for automatic tuning
-        rho_sparsity=0.01,
-        n_hvg=2000,
-        n_markers_per_type=50,
-        spatial_method="knn",
-        k_neighbors=6,
-        max_iter=100,
-        tol=1e-4,
-        preprocess="log_cpm",    # "log_cpm", "pearson", or "raw"
+        sketch_dim=512,              # Sketch space dimension
+        lambda_spatial=5000.0,       # Spatial regularization (or "auto")
+        rho_sparsity=0.01,           # L1 sparsity penalty
+        n_hvg=2000,                  # Number of highly variable genes
+        n_markers_per_type=50,       # Marker genes per cell type
+        spatial_method="knn",        # "knn", "radius", or "grid"
+        k_neighbors=6,               # k for k-NN graph
+        max_iter=100,                # BCD max iterations
+        tol=1e-4,                    # Convergence tolerance
+        preprocess="log_cpm",        # "log_cpm", "pearson", or "raw"
         random_state=None,
         verbose=False,
     ): ...
@@ -143,28 +215,91 @@ class FlashDeconv:
     def summary(self) -> dict
 ```
 
-### Attributes (after fitting)
+### Parameters
 
-- `beta_`: Raw cell type abundances (n_spots, n_cell_types)
-- `proportions_`: Normalized proportions that sum to 1 (n_spots, n_cell_types)
-- `gene_idx_`: Indices of genes used for deconvolution
-- `lambda_used_`: Actual spatial regularization value used
-- `info_`: Optimization information (converged, n_iterations, final_objective)
-- `cell_type_names_`: Names of cell types (if provided)
+| Parameter | Type | Default | Description |
+|:----------|:-----|:--------|:------------|
+| `sketch_dim` | int | 512 | Dimension of sketch space (higher = more info, slower) |
+| `lambda_spatial` | float or "auto" | 5000.0 | Spatial regularization strength (see Best Practices) |
+| `rho_sparsity` | float | 0.01 | L1 sparsity penalty |
+| `n_hvg` | int | 2000 | Number of highly variable genes to select |
+| `n_markers_per_type` | int | 50 | Top markers per cell type |
+| `k_neighbors` | int | 6 | Neighbors for spatial graph |
+| `max_iter` | int | 100 | Maximum BCD iterations |
+| `tol` | float | 1e-4 | Convergence tolerance |
+| `preprocess` | str | "log_cpm" | Preprocessing: "log_cpm" (recommended), "pearson", or "raw" |
+
+### Attributes (After Fitting)
+
+| Attribute | Shape | Description |
+|:----------|:------|:------------|
+| `beta_` | (n_spots, n_cell_types) | Raw cell type abundances |
+| `proportions_` | (n_spots, n_cell_types) | Normalized proportions (sum to 1) |
+| `gene_idx_` | (n_selected,) | Indices of genes used |
+| `lambda_used_` | float | Actual λ value used |
+| `info_` | dict | Optimization info (converged, n_iterations, final_objective) |
+| `cell_type_names_` | array | Cell type names (if provided) |
+
+---
+
+## Input Data Formats
+
+FlashDeconv accepts multiple input formats:
+
+### Spatial Data (Y)
+- **NumPy array**: Dense (n_spots, n_genes)
+- **SciPy sparse matrix**: CSR/CSC format (recommended for Visium HD to reduce memory usage)
+- **AnnData**: `.X` or specified layer (e.g., `adata.layers["counts"]`)
+
+### Reference (X)
+- **NumPy array**: Dense (n_cell_types, n_genes) signature matrix
+- **AnnData**: Automatically aggregated from single-cell data via `prepare_data()` using mean expression per cell type
+
+### Coordinates
+- **NumPy array**: (n_spots, 2) for 2D spatial coordinates, or (n_spots, 3) for 3D (e.g., z-stacked sections)
+- **From AnnData**: Automatically extracted from `.obsm["spatial"]`, `.obsm["X_spatial"]`, or `.obs[["x", "y"]]`
+
+---
 
 ## Citation
 
 If you use FlashDeconv in your research, please cite:
 
+**Plain text:**
+> Yang, C., Zhang, X. & Chen, J. FlashDeconv enables atlas-scale, multi-resolution spatial deconvolution via structure-preserving sketching. Preprint, 2025.
+
+**BibTeX:**
 ```bibtex
-@article{flashdeconv2024,
-  title={FlashDeconv: Fast Linear Algebra for Scalable Hybrid Deconvolution},
-  author={FlashDeconv Team},
-  journal={bioRxiv},
-  year={2024}
+@article{flashdeconv2025,
+  title={FlashDeconv enables atlas-scale, multi-resolution spatial deconvolution via structure-preserving sketching},
+  author={Yang, Chen and Zhang, Xianyang and Chen, Jun},
+  note={Preprint},
+  year={2025}
 }
 ```
 
+---
+
+## Contributing
+
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+---
+
 ## License
 
-GPL-3.0 License
+This project is licensed under the [GPL-3.0 License](LICENSE).
+
+---
+
+## Related Resources
+
+- **Paper Reproducibility:** [flashdeconv-reproducibility](https://github.com/cafferychen777/flashdeconv-reproducibility) — Complete code to reproduce all figures and benchmarks
+- **Documentation:** [ReadTheDocs](https://flashdeconv.readthedocs.io) *(coming soon)*
+- **Issues & Support:** [GitHub Issues](https://github.com/cafferychen777/flashdeconv/issues)
+
+---
+
+## Acknowledgments
+
+We thank the developers of [Spotless](https://github.com/OmicsML/Spotless-Benchmark), [Cell2Location](https://github.com/BayraktarLab/cell2location), and [RCTD](https://github.com/dmcable/spacexr) for their benchmarking frameworks and methodological contributions to the spatial transcriptomics field.
