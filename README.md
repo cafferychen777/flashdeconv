@@ -2,8 +2,9 @@
 
 **Fast Linear Algebra for Scalable Hybrid Deconvolution**
 
+[![PyPI version](https://img.shields.io/pypi/v/flashdeconv.svg)](https://pypi.org/project/flashdeconv/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 
 *Unlocking atlas-scale spatial biology with randomized numerical linear algebra.*
 
@@ -29,83 +30,50 @@ FlashDeconv is a high-performance spatial transcriptomics deconvolution method d
 ## Installation
 
 ```bash
-# From source (recommended for latest features)
-git clone https://github.com/cafferychen777/flashdeconv.git
-cd flashdeconv
-pip install -e .
-
-# With development dependencies
-pip install -e ".[dev]"
+# From PyPI (recommended)
+pip install flashdeconv
 
 # With scanpy/anndata integration
-pip install -e ".[io]"
+pip install flashdeconv[io]
 ```
 
-**Requirements:** Python ≥ 3.8, numpy, scipy, numba. Optional: scanpy, anndata for AnnData workflow.
+**For development:**
+
+```bash
+# From source
+git clone https://github.com/cafferychen777/flashdeconv.git
+cd flashdeconv
+pip install -e ".[dev]"
+```
+
+**Requirements:** Python ≥ 3.9, numpy, scipy, numba. Optional: scanpy, anndata for AnnData workflow.
 
 ---
 
 ## Quick Start
 
-### 1. The NumPy Way
-
-```python
-import numpy as np
-from flashdeconv import FlashDeconv
-
-# Load your data (example shapes)
-# Y: Spatial count matrix (n_spots × n_genes), can be sparse
-# X: Single-cell reference signatures (n_cell_types × n_genes)
-# coords: Spatial coordinates (n_spots × 2)
-
-# Initialize and run
-model = FlashDeconv(
-    sketch_dim=512,       # Sketch dimension (default: 512)
-    lambda_spatial=5000,  # Spatial regularization strength
-    verbose=True
-)
-proportions = model.fit_transform(Y, X, coords)
-
-# Returns: (n_spots × n_cell_types) normalized proportions
-print(proportions[:5])
-```
-
-### 2. The Scanpy/AnnData Way
-
-FlashDeconv integrates seamlessly with the `scanpy` ecosystem.
+### With Scanpy/AnnData
 
 ```python
 import scanpy as sc
+import flashdeconv as fd
+
+adata_st = sc.read_h5ad("visium_hd.h5ad")
+adata_ref = sc.read_h5ad("reference.h5ad")
+
+fd.tl.deconvolve(adata_st, adata_ref, cell_type_key="cell_type")
+
+adata_st.obsm["flashdeconv"]          # Cell type proportions
+sc.pl.spatial(adata_st, color="flashdeconv_Hepatocyte")
+```
+
+### With NumPy
+
+```python
 from flashdeconv import FlashDeconv
-from flashdeconv.io import prepare_data, result_to_anndata
 
-# Load data
-adata_st = sc.read_h5ad("visium_hd_slide.h5ad")
-adata_ref = sc.read_h5ad("scrna_reference.h5ad")
-
-# 1. Prepare inputs (auto-aligns genes)
-Y, X, coords, cell_type_names, gene_names = prepare_data(
-    adata_st,
-    adata_ref,
-    cell_type_key="cell_type"  # Column name in adata_ref.obs
-)
-
-# 2. Run deconvolution
-model = FlashDeconv(
-    lambda_spatial=5000,  # Adjust based on platform (see Best Practices)
-    verbose=True
-)
-proportions = model.fit_transform(Y, X, coords, cell_type_names=cell_type_names)
-
-# 3. Save results back to AnnData
-adata_st = result_to_anndata(proportions, adata_st, cell_type_names)
-
-# Access results
-adata_st.obsm["flashdeconv"]         # DataFrame with proportions
-adata_st.obs["flashdeconv_dominant"] # Dominant cell type per spot
-
-# Visualization
-sc.pl.spatial(adata_st, color=["Hepatocyte", "Kupffer_cell"], img_key="hires")
+model = FlashDeconv(lambda_spatial=5000)
+proportions = model.fit_transform(Y, X, coords)  # (n_spots, n_cell_types)
 ```
 
 ---
@@ -186,6 +154,25 @@ FlashDeconv matches top-tier Bayesian methods (Cell2Location, RCTD) on accuracy 
 ---
 
 ## API Reference
+
+### fd.tl.deconvolve
+
+```python
+fd.tl.deconvolve(
+    adata_st,                        # Spatial AnnData
+    adata_ref,                       # Reference AnnData
+    cell_type_key="cell_type",       # Column in adata_ref.obs
+    sketch_dim=512,
+    lambda_spatial=5000.0,
+    key_added="flashdeconv",         # Key for results in adata_st
+    copy=False,                      # If True, return copy instead of inplace
+)
+```
+
+**Results stored in `adata_st`:**
+- `.obsm["flashdeconv"]` — Cell type proportions (DataFrame)
+- `.obs["flashdeconv_dominant"]` — Dominant cell type per spot
+- `.uns["flashdeconv_params"]` — Parameters used
 
 ### FlashDeconv Class
 
