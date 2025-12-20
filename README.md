@@ -102,7 +102,7 @@ While FlashDeconv works well with defaults, **adjusting `lambda_spatial`** (spat
 
 FlashDeconv reformulates spatial deconvolution as **Graph-Regularized Non-Negative Least Squares**, solved in a compressed "sketch" space via randomized numerical linear algebra (RandNLA):
 
-![FlashDeconv Framework](figures/figure1.jpeg)
+![FlashDeconv Framework](https://raw.githubusercontent.com/cafferychen777/flashdeconv/main/figures/figure1.jpeg)
 **Figure 1. Overview of the FlashDeconv framework.** (A) Input data preprocessing with Log-CPM normalization and gene selection. (B) Structure-preserving randomized sketching using leverage-score weighting to compress gene space while preserving rare cell signals. (C) Spatial graph construction and regularized optimization via Block Coordinate Descent. (D) Final cell type proportion estimates for each spatial location.
 
 ### Three-Stage Framework

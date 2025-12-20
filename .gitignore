@@ -63,4 +63,7 @@ CLAUDE.md
 validation/
 paper/
 data/
-figures/
+
+# Figures - keep README figure, ignore others
+figures/*
+!figures/figure1.jpeg
