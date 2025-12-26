@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "flashdeconv"
-version = "0.1.1"
+version = "0.1.2"
 description = "Fast Linear Algebra for Scalable Hybrid Deconvolution of Spatial Transcriptomics"
 readme = "README.md"
 license = {text = "GPL-3.0"}
@@ -26,6 +26,7 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
 requires-python = ">=3.9"
@@ -66,7 +67,7 @@ include = ["flashdeconv*"]
 
 [tool.black]
 line-length = 100
-target-version = ["py39", "py310", "py311"]
+target-version = ["py39", "py310", "py311", "py312"]
 
 [tool.isort]
 profile = "black"
