@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: article
+title: "FlashDeconv enables atlas-scale, multi-resolution spatial deconvolution via structure-preserving sketching"
+authors:
+  - family-names: "Yang"
+    given-names: "Chen"
+    orcid: "https://orcid.org/0009-0009-9151-2901"
+  - family-names: "Chen"
+    given-names: "Jun"
+  - family-names: "Zhang"
+    given-names: "Xianyang"
+doi: "10.64898/2025.12.22.696108"
+url: "https://doi.org/10.64898/2025.12.22.696108"
+repository-code: "https://github.com/cafferychen777/flashdeconv"
+license: GPL-3.0
+year: 2025
+journal: "bioRxiv"

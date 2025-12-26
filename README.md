@@ -10,7 +10,7 @@
 
 FlashDeconv is a high-performance spatial transcriptomics deconvolution method designed for **atlas-scale** and **subcellular-resolution** platforms (Visium HD, Stereo-seq, Xenium). It leverages structure-preserving randomized sketching to estimate cell type proportions with linear scalability—processing **1 million spots in ~3 minutes** on commodity hardware.
 
-> **Paper:** Chen Yang*, Xianyang Zhang*, Jun Chen*. *FlashDeconv enables atlas-scale, multi-resolution spatial deconvolution via structure-preserving sketching*. Preprint, 2025.
+> **Paper:** Chen Yang, Jun Chen, Xianyang Zhang. *FlashDeconv enables atlas-scale, multi-resolution spatial deconvolution via structure-preserving sketching*. bioRxiv, 2025. DOI: [10.64898/2025.12.22.696108](https://doi.org/10.64898/2025.12.22.696108)
 >
 > **Reproducibility:** To reproduce figures and benchmarks from the paper, visit the [flashdeconv-reproducibility](https://github.com/cafferychen777/flashdeconv-reproducibility) repository.
 
@@ -253,15 +253,17 @@ FlashDeconv accepts multiple input formats:
 If you use FlashDeconv in your research, please cite:
 
 **Plain text:**
-> Yang, C., Zhang, X. & Chen, J. FlashDeconv enables atlas-scale, multi-resolution spatial deconvolution via structure-preserving sketching. Preprint, 2025.
+> Yang, C., Chen, J. & Zhang, X. FlashDeconv enables atlas-scale, multi-resolution spatial deconvolution via structure-preserving sketching. *bioRxiv* (2025). https://doi.org/10.64898/2025.12.22.696108
 
 **BibTeX:**
 ```bibtex
-@article{flashdeconv2025,
+@article{yang2025flashdeconv,
   title={FlashDeconv enables atlas-scale, multi-resolution spatial deconvolution via structure-preserving sketching},
-  author={Yang, Chen and Zhang, Xianyang and Chen, Jun},
-  note={Preprint},
-  year={2025}
+  author={Yang, Chen and Chen, Jun and Zhang, Xianyang},
+  journal={bioRxiv},
+  year={2025},
+  doi={10.64898/2025.12.22.696108},
+  url={https://doi.org/10.64898/2025.12.22.696108}
 }
 ```
 
