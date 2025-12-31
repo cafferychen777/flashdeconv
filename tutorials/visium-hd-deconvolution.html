@@ -57,8 +57,84 @@
             font-family: 'JetBrains Mono', monospace;
         }
 
+        /* Manual prose styles (since Tailwind CDN doesn't include typography plugin) */
+        .prose {
+            line-height: 1.75;
+            color: #334155;
+        }
+
         .prose h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #0f172a;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
             scroll-margin-top: 80px;
+        }
+
+        .prose h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1e293b;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .prose p {
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .prose ul, .prose ol {
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+            padding-left: 1.5rem;
+        }
+
+        .prose li {
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .prose ul {
+            list-style-type: disc;
+        }
+
+        .prose a {
+            color: #2563eb;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+
+        .prose a:hover {
+            color: #1d4ed8;
+        }
+
+        .prose pre {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            overflow-x: auto;
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .prose code {
+            font-size: 0.875rem;
+        }
+
+        .prose :not(pre) > code {
+            background-color: #f1f5f9;
+            padding: 0.125rem 0.375rem;
+            border-radius: 0.25rem;
+            font-size: 0.875rem;
+        }
+
+        .prose strong {
+            font-weight: 600;
+            color: #0f172a;
         }
 
         .toc a {
