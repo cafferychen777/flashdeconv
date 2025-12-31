@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How to Analyze Visium HD Data with Python | FlashDeconv Tutorial</title>
+
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Step-by-step tutorial on spatial transcriptomics cell type deconvolution using Python. Learn how to analyze Visium HD data, map cell types, and perform multi-resolution analysis with FlashDeconv.">
+    <meta name="keywords" content="Visium HD tutorial, spatial transcriptomics Python, cell type deconvolution tutorial, how to analyze Visium HD, spatial deconvolution Python, AnnData deconvolution, scanpy spatial analysis">
+    <meta name="author" content="Chen Yang">
+
+    <link rel="canonical" href="https://cafferyang.com/flashdeconv/tutorials/visium-hd-deconvolution.html">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="How to Analyze Visium HD Data with Python | FlashDeconv Tutorial">
+    <meta property="og:description" content="Step-by-step tutorial on spatial transcriptomics cell type deconvolution using Python and FlashDeconv.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://cafferyang.com/flashdeconv/tutorials/visium-hd-deconvolution.html">
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "TechArticle",
+        "headline": "How to Analyze Visium HD Data with Python",
+        "description": "Step-by-step tutorial on spatial transcriptomics cell type deconvolution",
+        "author": {
+            "@type": "Person",
+            "name": "Chen Yang"
+        },
+        "datePublished": "2025-12-31",
+        "publisher": {
+            "@type": "Organization",
+            "name": "FlashDeconv"
+        },
+        "about": {
+            "@type": "SoftwareApplication",
+            "name": "FlashDeconv"
+        }
+    }
+    </script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        code, pre {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .prose h2 {
+            scroll-margin-top: 80px;
+        }
+
+        .toc a {
+            transition: color 0.2s;
+        }
+
+        .toc a:hover {
+            color: #2563eb;
+        }
+    </style>
+</head>
+<body class="bg-white text-slate-700">
+    <!-- Header -->
+    <header class="fixed top-0 w-full bg-white/95 backdrop-blur-sm border-b border-slate-200 z-50">
+        <div class="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+            <a href="../" class="text-slate-800 font-semibold">FlashDeconv</a>
+            <nav class="flex items-center gap-6 text-sm text-slate-600">
+                <a href="../#method" class="hover:text-slate-900">Method</a>
+                <a href="./" class="text-blue-600 font-medium">Tutorials</a>
+                <a href="https://github.com/cafferychen777/flashdeconv" class="hover:text-slate-900">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="pt-20">
+        <!-- Hero -->
+        <div class="bg-gradient-to-b from-slate-50 to-white border-b border-slate-100">
+            <div class="max-w-4xl mx-auto px-6 py-12">
+                <div class="flex items-center gap-2 text-sm text-slate-500 mb-4">
+                    <a href="../" class="hover:text-slate-700">Home</a>
+                    <span>/</span>
+                    <a href="./" class="hover:text-slate-700">Tutorials</a>
+                    <span>/</span>
+                    <span class="text-slate-700">Visium HD Analysis</span>
+                </div>
+                <h1 class="text-3xl md:text-4xl font-semibold text-slate-900 mb-4">
+                    How to Analyze Visium HD Data with Python
+                </h1>
+                <p class="text-lg text-slate-600 mb-6">
+                    A complete guide to spatial transcriptomics cell type deconvolution using FlashDeconv and the Python ecosystem.
+                </p>
+                <div class="flex flex-wrap gap-3 text-sm">
+                    <span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full">Visium HD</span>
+                    <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full">Python</span>
+                    <span class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full">AnnData</span>
+                    <span class="px-3 py-1 bg-orange-100 text-orange-700 rounded-full">15 min read</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="max-w-4xl mx-auto px-6 py-12">
+            <div class="grid md:grid-cols-[1fr_200px] gap-12">
+                <!-- Main Content -->
+                <article class="prose prose-slate max-w-none">
+
+                    <h2 id="overview">Overview</h2>
+                    <p>
+                        <strong>Spatial transcriptomics deconvolution</strong> estimates the cell type composition at each spatial location (spot) by integrating single-cell RNA-seq reference data. This tutorial shows you how to:
+                    </p>
+                    <ul>
+                        <li>Load and preprocess Visium HD spatial data</li>
+                        <li>Prepare a single-cell RNA-seq reference</li>
+                        <li>Run cell type deconvolution with FlashDeconv</li>
+                        <li>Visualize and interpret the results</li>
+                    </ul>
+
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 my-6">
+                        <p class="text-blue-800 text-sm m-0">
+                            <strong>Why FlashDeconv?</strong> It's designed for large-scale spatial data like Visium HD, handling millions of spots without requiring a GPU. The scanpy-style API integrates seamlessly with existing workflows.
+                        </p>
+                    </div>
+
+                    <h2 id="installation">Installation</h2>
+                    <p>Install FlashDeconv and dependencies:</p>
+                    <pre><code class="language-bash">pip install flashdeconv scanpy</code></pre>
+
+                    <p>For Visium HD parquet file support:</p>
+                    <pre><code class="language-bash">pip install pyarrow</code></pre>
+
+                    <h2 id="load-data">Step 1: Load Your Data</h2>
+
+                    <h3>Load Visium HD spatial data</h3>
+                    <p>Visium HD data from 10x Genomics comes in binned outputs at different resolutions (2μm, 8μm, 16μm). Here's how to load 8μm binned data:</p>
+
+                    <pre><code class="language-python">import scanpy as sc
+import pandas as pd
+import pyarrow.parquet as pq
+from pathlib import Path
+
+def load_visium_hd(data_dir, bin_size="008um"):
+    """Load Visium HD data at specified resolution."""
+    bin_path = Path(data_dir) / f"square_{bin_size}"
+
+    # Load gene expression matrix
+    adata = sc.read_10x_h5(bin_path / "filtered_feature_bc_matrix.h5")
+    adata.var_names_make_unique()
+
+    # Load spatial coordinates
+    positions = pq.read_table(
+        bin_path / "spatial" / "tissue_positions.parquet"
+    ).to_pandas()
+    positions = positions.set_index("barcode")
+
+    # Align barcodes
+    common = adata.obs_names.intersection(positions.index)
+    adata = adata[common].copy()
+    adata.obsm["spatial"] = positions.loc[
+        common, ["pxl_col_in_fullres", "pxl_row_in_fullres"]
+    ].values
+
+    return adata
+
+# Load your data
+adata_st = load_visium_hd("./Visium_HD_outputs", bin_size="008um")
+print(f"Loaded {adata_st.n_obs:,} spots, {adata_st.n_vars:,} genes")</code></pre>
+
+                    <h3>Load single-cell reference</h3>
+                    <p>Your reference should be an AnnData object with cell type annotations:</p>
+
+                    <pre><code class="language-python"># Load reference scRNA-seq data
+adata_ref = sc.read_h5ad("./reference.h5ad")
+
+# Check cell type annotations
+print(adata_ref.obs["cell_type"].value_counts())</code></pre>
+
+                    <h2 id="deconvolution">Step 2: Run Deconvolution</h2>
+
+                    <p>FlashDeconv provides a scanpy-style API that stores results directly in your AnnData object:</p>
+
+                    <pre><code class="language-python">import flashdeconv as fd
+
+# Run deconvolution (results stored in adata_st.obsm)
+fd.tl.deconvolve(
+    adata_st,                    # Spatial AnnData
+    adata_ref,                   # Reference scRNA-seq
+    cell_type_key="cell_type",   # Column with cell type labels
+    # Optional parameters:
+    # sketch_dim=512,            # Sketch dimension (default: 512)
+    # lambda_spatial=5000,       # Spatial regularization strength
+    # n_hvg=2000,                # Number of highly variable genes
+)
+
+# Access results
+proportions = adata_st.obsm["flashdeconv"]
+print(f"Shape: {proportions.shape}")  # (n_spots, n_cell_types)</code></pre>
+
+                    <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 my-6">
+                        <p class="text-amber-800 text-sm m-0">
+                            <strong>Parameter tuning:</strong> The default parameters work well for most Visium/Visium HD data. For sparse data or small spot sizes, consider increasing <code>lambda_spatial</code>.
+                        </p>
+                    </div>
+
+                    <h2 id="visualization">Step 3: Visualize Results</h2>
+
+                    <h3>Plot cell type proportions spatially</h3>
+                    <pre><code class="language-python">import matplotlib.pyplot as plt
+
+# Get cell type names
+cell_types = adata_st.uns["flashdeconv"]["cell_types"]
+
+# Plot each cell type
+fig, axes = plt.subplots(2, 4, figsize=(16, 8))
+for i, (ax, ct) in enumerate(zip(axes.flat, cell_types)):
+    sc.pl.spatial(
+        adata_st,
+        color=None,
+        ax=ax,
+        show=False,
+    )
+    # Color by proportion
+    props = adata_st.obsm["flashdeconv"][:, i]
+    scatter = ax.scatter(
+        adata_st.obsm["spatial"][:, 0],
+        adata_st.obsm["spatial"][:, 1],
+        c=props,
+        s=1,
+        cmap="Reds",
+    )
+    ax.set_title(ct)
+    ax.axis("off")
+
+plt.tight_layout()
+plt.savefig("cell_type_maps.png", dpi=150)
+plt.show()</code></pre>
+
+                    <h3>Identify dominant cell type per spot</h3>
+                    <pre><code class="language-python">import numpy as np
+
+# Assign dominant cell type
+dominant_idx = np.argmax(adata_st.obsm["flashdeconv"], axis=1)
+adata_st.obs["dominant_cell_type"] = [cell_types[i] for i in dominant_idx]
+
+# Plot
+sc.pl.spatial(adata_st, color="dominant_cell_type", spot_size=1)</code></pre>
+
+                    <h2 id="advanced">Advanced: Multi-Resolution Analysis</h2>
+                    <p>
+                        For Visium HD, you can analyze how cell type signals change across resolutions. This helps identify the optimal bin size for your analysis:
+                    </p>
+
+                    <pre><code class="language-python"># See the full multi-resolution tutorial notebook:
+# examples/resolution_horizon_analysis.ipynb</code></pre>
+
+                    <p>
+                        <a href="https://colab.research.google.com/github/cafferychen777/flashdeconv/blob/main/examples/resolution_horizon_analysis.ipynb" class="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700">
+                            Open in Google Colab
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                            </svg>
+                        </a>
+                    </p>
+
+                    <h2 id="next-steps">Next Steps</h2>
+                    <ul>
+                        <li><a href="https://github.com/cafferychen777/flashdeconv#readme">Full API documentation</a></li>
+                        <li><a href="https://github.com/cafferychen777/flashdeconv/tree/main/examples">More example notebooks</a></li>
+                        <li><a href="https://doi.org/10.64898/2025.12.22.696108">Read the paper</a> for method details</li>
+                    </ul>
+
+                    <h2 id="citation">Citation</h2>
+                    <p>If you use FlashDeconv in your research, please cite:</p>
+                    <pre class="bg-slate-100 p-4 rounded text-sm"><code>Yang, C., Chen, J. & Zhang, X. FlashDeconv enables atlas-scale,
+multi-resolution spatial deconvolution via structure-preserving sketching.
+bioRxiv (2025). https://doi.org/10.64898/2025.12.22.696108</code></pre>
+
+                </article>
+
+                <!-- Table of Contents -->
+                <aside class="hidden md:block">
+                    <div class="sticky top-24 toc">
+                        <h4 class="text-sm font-semibold text-slate-900 mb-4">On this page</h4>
+                        <nav class="text-sm space-y-2">
+                            <a href="#overview" class="block text-slate-500 hover:text-slate-900">Overview</a>
+                            <a href="#installation" class="block text-slate-500 hover:text-slate-900">Installation</a>
+                            <a href="#load-data" class="block text-slate-500 hover:text-slate-900">Step 1: Load Data</a>
+                            <a href="#deconvolution" class="block text-slate-500 hover:text-slate-900">Step 2: Deconvolution</a>
+                            <a href="#visualization" class="block text-slate-500 hover:text-slate-900">Step 3: Visualization</a>
+                            <a href="#advanced" class="block text-slate-500 hover:text-slate-900">Advanced</a>
+                            <a href="#next-steps" class="block text-slate-500 hover:text-slate-900">Next Steps</a>
+                            <a href="#citation" class="block text-slate-500 hover:text-slate-900">Citation</a>
+                        </nav>
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-200 py-8">
+        <div class="max-w-4xl mx-auto px-6 text-center text-sm text-slate-500">
+            <p>FlashDeconv is open source under GPL-3.0 license.</p>
+            <p class="mt-2">
+                <a href="https://github.com/cafferychen777/flashdeconv" class="text-blue-600 hover:underline">GitHub</a>
+                &middot;
+                <a href="https://pypi.org/project/flashdeconv/" class="text-blue-600 hover:underline">PyPI</a>
+                &middot;
+                <a href="https://doi.org/10.64898/2025.12.22.696108" class="text-blue-600 hover:underline">Paper</a>
+            </p>
+        </div>
+    </footer>
+
+    <script>hljs.highlightAll();</script>
+</body>
+</html>

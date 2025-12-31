@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tutorials | FlashDeconv - Spatial Transcriptomics Deconvolution</title>
+
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Learn spatial transcriptomics deconvolution with FlashDeconv tutorials. Step-by-step guides for Visium HD analysis, cell type mapping, and Python workflows.">
+    <meta name="keywords" content="spatial transcriptomics tutorial, deconvolution tutorial, Visium HD Python, cell type deconvolution guide, AnnData spatial analysis">
+
+    <link rel="canonical" href="https://cafferyang.com/flashdeconv/tutorials/">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-white text-slate-700">
+    <!-- Header -->
+    <header class="fixed top-0 w-full bg-white/95 backdrop-blur-sm border-b border-slate-200 z-50">
+        <div class="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+            <a href="../" class="text-slate-800 font-semibold">FlashDeconv</a>
+            <nav class="flex items-center gap-6 text-sm text-slate-600">
+                <a href="../#method" class="hover:text-slate-900">Method</a>
+                <a href="./" class="text-blue-600 font-medium">Tutorials</a>
+                <a href="https://github.com/cafferychen777/flashdeconv" class="hover:text-slate-900">GitHub</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="pt-20">
+        <div class="max-w-4xl mx-auto px-6 py-12">
+            <h1 class="text-3xl font-semibold text-slate-900 mb-4">Tutorials</h1>
+            <p class="text-lg text-slate-600 mb-12">
+                Step-by-step guides to get started with spatial transcriptomics deconvolution using FlashDeconv.
+            </p>
+
+            <!-- Tutorial Grid -->
+            <div class="grid md:grid-cols-2 gap-6">
+
+                <!-- Tutorial Card 1 -->
+                <a href="visium-hd-deconvolution.html" class="block p-6 bg-white border border-slate-200 rounded-lg hover:border-blue-300 hover:shadow-md transition-all">
+                    <div class="flex items-center gap-2 text-sm text-slate-500 mb-2">
+                        <span class="px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs">Beginner</span>
+                        <span>15 min</span>
+                    </div>
+                    <h2 class="text-lg font-medium text-slate-900 mb-2">
+                        How to Analyze Visium HD Data with Python
+                    </h2>
+                    <p class="text-sm text-slate-600">
+                        Complete guide to loading Visium HD data, running cell type deconvolution, and visualizing spatial cell type distributions.
+                    </p>
+                </a>
+
+                <!-- Tutorial Card 2 -->
+                <a href="https://colab.research.google.com/github/cafferychen777/flashdeconv/blob/main/examples/resolution_horizon_analysis.ipynb" class="block p-6 bg-white border border-slate-200 rounded-lg hover:border-blue-300 hover:shadow-md transition-all">
+                    <div class="flex items-center gap-2 text-sm text-slate-500 mb-2">
+                        <span class="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs">Advanced</span>
+                        <span>30 min</span>
+                        <span class="px-2 py-0.5 bg-orange-100 text-orange-700 rounded text-xs">Colab</span>
+                    </div>
+                    <h2 class="text-lg font-medium text-slate-900 mb-2">
+                        Multi-Resolution Analysis (Resolution Horizon)
+                    </h2>
+                    <p class="text-sm text-slate-600">
+                        Learn how to analyze cell type signals across different bin sizes and identify the optimal resolution for rare cell types.
+                    </p>
+                </a>
+
+                <!-- Tutorial Card 3 -->
+                <a href="https://colab.research.google.com/github/cafferychen777/flashdeconv/blob/main/examples/spatial_deconvolution_tutorial.ipynb" class="block p-6 bg-white border border-slate-200 rounded-lg hover:border-blue-300 hover:shadow-md transition-all">
+                    <div class="flex items-center gap-2 text-sm text-slate-500 mb-2">
+                        <span class="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs">Beginner</span>
+                        <span>20 min</span>
+                        <span class="px-2 py-0.5 bg-orange-100 text-orange-700 rounded text-xs">Colab</span>
+                    </div>
+                    <h2 class="text-lg font-medium text-slate-900 mb-2">
+                        Complete Deconvolution Tutorial
+                    </h2>
+                    <p class="text-sm text-slate-600">
+                        End-to-end tutorial with synthetic data. Learn both scanpy-style and NumPy APIs, visualization, and accuracy evaluation.
+                    </p>
+                </a>
+
+                <!-- Tutorial Card 4 -->
+                <a href="https://github.com/cafferychen777/flashdeconv/blob/main/examples/quickstart.py" class="block p-6 bg-white border border-slate-200 rounded-lg hover:border-blue-300 hover:shadow-md transition-all">
+                    <div class="flex items-center gap-2 text-sm text-slate-500 mb-2">
+                        <span class="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs">Quick Start</span>
+                        <span>5 min</span>
+                    </div>
+                    <h2 class="text-lg font-medium text-slate-900 mb-2">
+                        Quick Start Script
+                    </h2>
+                    <p class="text-sm text-slate-600">
+                        Run FlashDeconv on synthetic data to understand the API without downloading real datasets.
+                    </p>
+                </a>
+
+            </div>
+
+            <!-- External Resources -->
+            <div class="mt-16">
+                <h2 class="text-xl font-semibold text-slate-900 mb-6">External Resources</h2>
+                <div class="space-y-4">
+                    <a href="https://www.sc-best-practices.org/spatial/deconvolution.html" class="flex items-center gap-3 text-slate-600 hover:text-blue-600">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                        </svg>
+                        Single-cell best practices: Spatial Deconvolution
+                    </a>
+                    <a href="https://squidpy.readthedocs.io/" class="flex items-center gap-3 text-slate-600 hover:text-blue-600">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                        </svg>
+                        Squidpy Documentation (Spatial Analysis)
+                    </a>
+                    <a href="https://scanpy.readthedocs.io/" class="flex items-center gap-3 text-slate-600 hover:text-blue-600">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                        </svg>
+                        Scanpy Documentation
+                    </a>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-200 py-8 mt-12">
+        <div class="max-w-4xl mx-auto px-6 text-center text-sm text-slate-500">
+            <a href="../" class="text-blue-600 hover:underline">Back to FlashDeconv Home</a>
+        </div>
+    </footer>
+</body>
+</html>
