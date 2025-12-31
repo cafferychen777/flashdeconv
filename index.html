@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FlashDeconv — Spatial Transcriptomics Deconvolution</title>
+
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="FlashDeconv: A computational method for spatial transcriptomics deconvolution using structure-preserving randomized sketching. Open-source Python package.">
+    <meta name="keywords" content="spatial transcriptomics, deconvolution, single-cell, bioinformatics, Visium HD, computational biology">
+    <meta name="author" content="Chen Yang, Xianyang Zhang, Jun Chen">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="FlashDeconv — Spatial Transcriptomics Deconvolution">
+    <meta property="og:description" content="A computational method for spatial transcriptomics deconvolution using structure-preserving randomized sketching.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://github.com/cafferychen777/flashdeconv">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="FlashDeconv — Spatial Transcriptomics Deconvolution">
+    <meta name="twitter:description" content="A computational method for spatial transcriptomics deconvolution using structure-preserving randomized sketching.">
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "FlashDeconv",
+        "applicationCategory": "Scientific Software",
+        "operatingSystem": "Cross-platform",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        },
+        "author": {
+            "@type": "Organization",
+            "name": "Texas A&M University, Mayo Clinic"
+        }
+    }
+    </script>
+
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@300;400;500;600&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+
+        :root {
+            --color-primary: #1e3a5f;
+            --color-accent: #2563eb;
+        }
+
+        body {
+            font-family: 'Source Sans 3', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        .font-serif {
+            font-family: 'Source Serif 4', Georgia, serif;
+        }
+
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Subtle animations */
+        .fade-in {
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Code block styling */
+        .code-block {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+        }
+
+        /* Academic paper style for blockquotes */
+        blockquote {
+            border-left: 3px solid #cbd5e1;
+            padding-left: 1rem;
+            font-style: italic;
+            color: #64748b;
+        }
+    </style>
+</head>
+<body class="bg-white text-slate-700 antialiased">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // Minimal header
+        const Header = () => {
+            const [scrolled, setScrolled] = useState(false);
+
+            useEffect(() => {
+                const onScroll = () => setScrolled(window.scrollY > 50);
+                window.addEventListener('scroll', onScroll);
+                return () => window.removeEventListener('scroll', onScroll);
+            }, []);
+
+            return (
+                <header className={`fixed top-0 w-full z-50 transition-all duration-300 ${scrolled ? 'bg-white/95 backdrop-blur-sm shadow-sm' : 'bg-transparent'}`}>
+                    <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+                        <a href="#" className="text-slate-800 font-semibold tracking-tight">FlashDeconv</a>
+                        <nav className="hidden md:flex items-center gap-8 text-sm text-slate-600">
+                            <a href="#method" className="hover:text-slate-900 transition-colors">Method</a>
+                            <a href="#benchmarks" className="hover:text-slate-900 transition-colors">Benchmarks</a>
+                            <a href="#usage" className="hover:text-slate-900 transition-colors">Usage</a>
+                            <a href="https://github.com/cafferychen777/flashdeconv" className="text-slate-500 hover:text-slate-800 transition-colors">
+                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                            </a>
+                        </nav>
+                    </div>
+                </header>
+            );
+        };
+
+        // Hero - Academic, understated
+        const Hero = () => (
+            <section className="pt-28 pb-16 px-6">
+                <div className="max-w-5xl mx-auto">
+                    <div className="max-w-3xl">
+                        <h1 className="font-serif text-4xl md:text-5xl text-slate-900 leading-tight mb-6">
+                            FlashDeconv
+                        </h1>
+                        <p className="text-xl text-slate-600 leading-relaxed mb-4">
+                            A computational method for spatial transcriptomics deconvolution that uses
+                            structure-preserving randomized sketching to estimate cell type proportions.
+                        </p>
+                        <p className="text-slate-500 mb-8">
+                            Designed for large-scale datasets where traditional methods face computational constraints.
+                        </p>
+
+                        <div className="flex flex-wrap gap-4 mb-12">
+                            <a href="https://doi.org/10.64898/2025.12.22.696108"
+                               className="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-800 text-white text-sm rounded hover:bg-slate-700 transition-colors">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                                Paper (bioRxiv)
+                            </a>
+                            <a href="https://github.com/cafferychen777/flashdeconv"
+                               className="inline-flex items-center gap-2 px-5 py-2.5 border border-slate-300 text-slate-700 text-sm rounded hover:border-slate-400 hover:bg-slate-50 transition-colors">
+                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                                Source Code
+                            </a>
+                            <a href="https://pypi.org/project/flashdeconv/"
+                               className="inline-flex items-center gap-2 px-5 py-2.5 border border-slate-300 text-slate-700 text-sm rounded hover:border-slate-400 hover:bg-slate-50 transition-colors">
+                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                                PyPI
+                            </a>
+                        </div>
+                    </div>
+
+                    {/* Framework Figure */}
+                    <div className="mt-8 bg-slate-50 rounded-lg p-6 border border-slate-100">
+                        <img
+                            src="https://raw.githubusercontent.com/cafferychen777/flashdeconv/main/figures/figure1.jpeg"
+                            alt="FlashDeconv framework overview"
+                            className="w-full rounded"
+                        />
+                        <p className="text-xs text-slate-500 mt-4 text-center">
+                            <strong>Figure 1.</strong> Overview of the FlashDeconv framework.
+                            (A) Input preprocessing. (B) Structure-preserving sketching.
+                            (C) Spatial graph construction and optimization. (D) Output cell type proportions.
+                        </p>
+                    </div>
+                </div>
+            </section>
+        );
+
+        // Method section
+        const Method = () => (
+            <section id="method" className="py-16 px-6 bg-slate-50 border-y border-slate-100">
+                <div className="max-w-5xl mx-auto">
+                    <h2 className="font-serif text-2xl text-slate-900 mb-8">Method</h2>
+
+                    <div className="grid md:grid-cols-2 gap-12">
+                        <div>
+                            <h3 className="font-medium text-slate-800 mb-3">Approach</h3>
+                            <p className="text-slate-600 text-sm leading-relaxed mb-4">
+                                FlashDeconv formulates spatial deconvolution as graph-regularized non-negative least squares,
+                                solved in a compressed sketch space. The key components are:
+                            </p>
+                            <ul className="text-sm text-slate-600 space-y-2">
+                                <li className="flex gap-2">
+                                    <span className="text-slate-400">1.</span>
+                                    <span><strong>Leverage-score gene selection</strong> — prioritizes genes that define distinct transcriptomic directions, independent of expression variance.</span>
+                                </li>
+                                <li className="flex gap-2">
+                                    <span className="text-slate-400">2.</span>
+                                    <span><strong>CountSketch projection</strong> — compresses gene space while preserving geometric relationships (Johnson-Lindenstrauss guarantee).</span>
+                                </li>
+                                <li className="flex gap-2">
+                                    <span className="text-slate-400">3.</span>
+                                    <span><strong>Sparse graph Laplacian</strong> — encodes spatial autocorrelation via k-NN graph with O(N) memory complexity.</span>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div>
+                            <h3 className="font-medium text-slate-800 mb-3">Design rationale</h3>
+                            <p className="text-slate-600 text-sm leading-relaxed mb-4">
+                                Traditional variance-based feature selection (HVG, PCA) can underweight markers for
+                                rare cell populations, since variance conflates biological distinctiveness with abundance.
+                            </p>
+                            <p className="text-slate-600 text-sm leading-relaxed">
+                                Leverage scores measure how much a gene contributes to the span of the reference matrix,
+                                providing an abundance-invariant criterion for gene importance. This is particularly
+                                relevant when rare cell types (e.g., endothelial cells, Tuft cells) are of biological interest.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        );
+
+        // Benchmarks - honest, with context
+        const Benchmarks = () => {
+            const chartRef = useRef(null);
+            const runtimeRef = useRef(null);
+
+            useEffect(() => {
+                // Accuracy chart
+                if (chartRef.current) {
+                    const ctx = chartRef.current.getContext('2d');
+                    new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: ['FlashDeconv', 'RCTD', 'Cell2Location', 'SPOTlight', 'Tangram', 'CARD'],
+                            datasets: [{
+                                label: 'Mean Pearson r (Spotless benchmark)',
+                                data: [0.944, 0.952, 0.948, 0.891, 0.876, 0.923],
+                                backgroundColor: [
+                                    'rgba(37, 99, 235, 0.8)',
+                                    'rgba(148, 163, 184, 0.6)',
+                                    'rgba(148, 163, 184, 0.6)',
+                                    'rgba(148, 163, 184, 0.6)',
+                                    'rgba(148, 163, 184, 0.6)',
+                                    'rgba(148, 163, 184, 0.6)'
+                                ],
+                                borderWidth: 0,
+                                borderRadius: 4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    callbacks: {
+                                        label: (ctx) => `Pearson r: ${ctx.raw.toFixed(3)}`
+                                    }
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: false,
+                                    min: 0.8,
+                                    max: 1.0,
+                                    grid: { color: 'rgba(0,0,0,0.05)' },
+                                    ticks: { font: { size: 11 } }
+                                },
+                                x: {
+                                    grid: { display: false },
+                                    ticks: { font: { size: 11 } }
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // Runtime chart
+                if (runtimeRef.current) {
+                    const ctx = runtimeRef.current.getContext('2d');
+                    new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: ['10K', '50K', '100K', '500K', '1M'],
+                            datasets: [{
+                                label: 'FlashDeconv',
+                                data: [1, 8, 18, 90, 180],
+                                borderColor: 'rgba(37, 99, 235, 1)',
+                                backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                                fill: true,
+                                tension: 0.3,
+                                pointRadius: 4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    callbacks: {
+                                        label: (ctx) => `${ctx.raw} seconds`
+                                    }
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    title: { display: true, text: 'Runtime (seconds)', font: { size: 11 } },
+                                    grid: { color: 'rgba(0,0,0,0.05)' },
+                                    ticks: { font: { size: 11 } }
+                                },
+                                x: {
+                                    title: { display: true, text: 'Number of spots', font: { size: 11 } },
+                                    grid: { display: false },
+                                    ticks: { font: { size: 11 } }
+                                }
+                            }
+                        }
+                    });
+                }
+            }, []);
+
+            return (
+                <section id="benchmarks" className="py-16 px-6">
+                    <div className="max-w-5xl mx-auto">
+                        <h2 className="font-serif text-2xl text-slate-900 mb-2">Benchmarks</h2>
+                        <p className="text-slate-500 text-sm mb-8">
+                            Evaluated on the Spotless synthetic benchmark suite (56 datasets, 6 tissues).
+                        </p>
+
+                        <div className="grid md:grid-cols-2 gap-8 mb-8">
+                            <div className="bg-white border border-slate-200 rounded-lg p-6">
+                                <h3 className="text-sm font-medium text-slate-700 mb-4">Accuracy comparison</h3>
+                                <div className="h-64">
+                                    <canvas ref={chartRef}></canvas>
+                                </div>
+                                <p className="text-xs text-slate-500 mt-4">
+                                    FlashDeconv achieves comparable accuracy to probabilistic methods (RCTD, Cell2Location)
+                                    on synthetic benchmarks. Note: synthetic data may not capture all real-world complexities.
+                                </p>
+                            </div>
+
+                            <div className="bg-white border border-slate-200 rounded-lg p-6">
+                                <h3 className="text-sm font-medium text-slate-700 mb-4">Runtime scaling</h3>
+                                <div className="h-64">
+                                    <canvas ref={runtimeRef}></canvas>
+                                </div>
+                                <p className="text-xs text-slate-500 mt-4">
+                                    Linear O(N) scaling enables analysis of large datasets.
+                                    Tested on MacBook Pro M2 Max (32GB). GPU not required.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                            <p className="text-sm text-amber-800">
+                                <strong>Limitations:</strong> Performance may vary depending on tissue type,
+                                reference quality, and platform-specific noise characteristics.
+                                The <code className="bg-amber-100 px-1 rounded">lambda_spatial</code> parameter
+                                should be tuned based on spot size and data sparsity.
+                            </p>
+                        </div>
+                    </div>
+                </section>
+            );
+        };
+
+        // Usage section
+        const Usage = () => {
+            const [copied, setCopied] = useState(false);
+
+            const code1 = `pip install flashdeconv`;
+            const code2 = `import flashdeconv as fd
+
+# Scanpy-style API
+fd.tl.deconvolve(
+    adata_st,           # Spatial AnnData
+    adata_ref,          # Reference scRNA-seq
+    cell_type_key="cell_type"
+)
+
+# Results in adata_st.obsm["flashdeconv"]`;
+
+            const copyCode = (text) => {
+                navigator.clipboard.writeText(text);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+            };
+
+            return (
+                <section id="usage" className="py-16 px-6 bg-slate-50 border-y border-slate-100">
+                    <div className="max-w-5xl mx-auto">
+                        <h2 className="font-serif text-2xl text-slate-900 mb-8">Usage</h2>
+
+                        <div className="grid md:grid-cols-2 gap-8">
+                            <div>
+                                <h3 className="text-sm font-medium text-slate-700 mb-3">Installation</h3>
+                                <div className="code-block rounded-lg p-4 font-mono text-sm">
+                                    <div className="flex items-center justify-between">
+                                        <code className="text-slate-300">
+                                            <span className="text-emerald-400">$</span> {code1}
+                                        </code>
+                                        <button
+                                            onClick={() => copyCode(code1)}
+                                            className="text-slate-500 hover:text-white text-xs transition-colors"
+                                        >
+                                            {copied ? 'Copied' : 'Copy'}
+                                        </button>
+                                    </div>
+                                </div>
+                                <p className="text-xs text-slate-500 mt-3">
+                                    Requires Python ≥ 3.9. Dependencies: numpy, scipy, numba.
+                                    <br/>Optional: <code className="bg-slate-200 px-1 rounded">pip install flashdeconv[io]</code> for AnnData support.
+                                </p>
+                            </div>
+
+                            <div>
+                                <h3 className="text-sm font-medium text-slate-700 mb-3">Quick start</h3>
+                                <div className="code-block rounded-lg p-4 font-mono text-xs overflow-x-auto">
+                                    <pre className="text-slate-300 whitespace-pre">{code2}</pre>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="mt-8 text-sm text-slate-600">
+                            <p>
+                                See the <a href="https://github.com/cafferychen777/flashdeconv#readme" className="text-blue-600 hover:underline">documentation</a> for
+                                detailed API reference, parameter tuning guidelines, and example notebooks.
+                            </p>
+                        </div>
+                    </div>
+                </section>
+            );
+        };
+
+        // Footer
+        const Footer = () => (
+            <footer className="py-12 px-6 bg-white">
+                <div className="max-w-5xl mx-auto">
+                    <div className="border-t border-slate-200 pt-8">
+                        <div className="grid md:grid-cols-2 gap-8">
+                            <div>
+                                <h3 className="font-medium text-slate-800 mb-3">Citation</h3>
+                                <p className="text-xs text-slate-600 leading-relaxed">
+                                    Yang, C., Chen, J. & Zhang, X. FlashDeconv enables atlas-scale, multi-resolution
+                                    spatial deconvolution via structure-preserving sketching. <em>bioRxiv</em> (2025).
+                                    <br/>
+                                    <a href="https://doi.org/10.64898/2025.12.22.696108" className="text-blue-600 hover:underline">
+                                        https://doi.org/10.64898/2025.12.22.696108
+                                    </a>
+                                </p>
+                            </div>
+                            <div>
+                                <h3 className="font-medium text-slate-800 mb-3">Contact</h3>
+                                <p className="text-xs text-slate-600">
+                                    Questions or issues? Please open a
+                                    <a href="https://github.com/cafferychen777/flashdeconv/issues" className="text-blue-600 hover:underline ml-1">GitHub issue</a>.
+                                </p>
+                                <p className="text-xs text-slate-500 mt-4">
+                                    Texas A&M University · Mayo Clinic
+                                    <br/>
+                                    Released under GPL-3.0 License
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </footer>
+        );
+
+        const App = () => (
+            <div className="min-h-screen">
+                <Header />
+                <main>
+                    <Hero />
+                    <Method />
+                    <Benchmarks />
+                    <Usage />
+                </main>
+                <Footer />
+            </div>
+        );
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
+</body>
+</html>
