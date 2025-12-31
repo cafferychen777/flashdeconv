@@ -3,23 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FlashDeconv — Spatial Transcriptomics Deconvolution</title>
+    <title>FlashDeconv — Spatial Transcriptomics Deconvolution Tool | Python Package</title>
 
     <!-- SEO Meta Tags -->
-    <meta name="description" content="FlashDeconv: A computational method for spatial transcriptomics deconvolution using structure-preserving randomized sketching. Open-source Python package.">
-    <meta name="keywords" content="spatial transcriptomics, deconvolution, single-cell, bioinformatics, Visium HD, computational biology">
+    <meta name="description" content="FlashDeconv: Fast spatial transcriptomics deconvolution using leverage-score sketching. Open-source Python tool for Visium, Visium HD, Xenium, MERFISH, and Slide-seq cell type decomposition.">
+    <meta name="keywords" content="spatial transcriptomics deconvolution, FlashDeconv, cell type deconvolution, Visium HD deconvolution, single-cell RNA-seq, scRNA-seq, spot deconvolution, Xenium, MERFISH, Slide-seq, computational biology, bioinformatics Python">
     <meta name="author" content="Chen Yang, Xianyang Zhang, Jun Chen">
 
+    <!-- Canonical URL -->
+    <link rel="canonical" href="https://cafferyang.com/flashdeconv/">
+
     <!-- Open Graph -->
-    <meta property="og:title" content="FlashDeconv — Spatial Transcriptomics Deconvolution">
-    <meta property="og:description" content="A computational method for spatial transcriptomics deconvolution using structure-preserving randomized sketching.">
+    <meta property="og:title" content="FlashDeconv — Spatial Transcriptomics Deconvolution Tool">
+    <meta property="og:description" content="Fast Python tool for spatial transcriptomics cell type deconvolution. Supports Visium, Visium HD, Xenium, MERFISH, and other platforms.">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://github.com/cafferychen777/flashdeconv">
+    <meta property="og:url" content="https://cafferyang.com/flashdeconv/">
+    <meta property="og:image" content="https://raw.githubusercontent.com/cafferychen777/flashdeconv/main/figures/figure1.jpeg">
+    <meta property="og:site_name" content="FlashDeconv">
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="FlashDeconv — Spatial Transcriptomics Deconvolution">
-    <meta name="twitter:description" content="A computational method for spatial transcriptomics deconvolution using structure-preserving randomized sketching.">
+    <meta name="twitter:title" content="FlashDeconv — Spatial Transcriptomics Deconvolution Tool">
+    <meta name="twitter:description" content="Fast Python tool for spatial transcriptomics cell type deconvolution. Open-source, GPU-free, scales to millions of spots.">
+    <meta name="twitter:image" content="https://raw.githubusercontent.com/cafferychen777/flashdeconv/main/figures/figure1.jpeg">
 
     <!-- Structured Data -->
     <script type="application/ld+json">
@@ -27,16 +33,43 @@
         "@context": "https://schema.org",
         "@type": "SoftwareApplication",
         "name": "FlashDeconv",
+        "alternateName": "FlashDeconv spatial transcriptomics deconvolution",
+        "description": "A fast Python tool for spatial transcriptomics cell type deconvolution using leverage-score sketching. Supports Visium, Visium HD, Xenium, MERFISH, and Slide-seq platforms.",
         "applicationCategory": "Scientific Software",
-        "operatingSystem": "Cross-platform",
+        "applicationSubCategory": "Bioinformatics",
+        "operatingSystem": "Windows, macOS, Linux",
+        "softwareVersion": "0.1.3",
+        "programmingLanguage": "Python",
+        "license": "https://opensource.org/licenses/GPL-3.0",
+        "url": "https://cafferyang.com/flashdeconv/",
+        "downloadUrl": "https://pypi.org/project/flashdeconv/",
+        "codeRepository": "https://github.com/cafferychen777/flashdeconv",
         "offers": {
             "@type": "Offer",
             "price": "0",
             "priceCurrency": "USD"
         },
-        "author": {
-            "@type": "Organization",
-            "name": "Texas A&M University, Mayo Clinic"
+        "author": [
+            {
+                "@type": "Person",
+                "name": "Chen Yang",
+                "affiliation": "Texas A&M University"
+            },
+            {
+                "@type": "Person",
+                "name": "Jun Chen",
+                "affiliation": "Mayo Clinic"
+            },
+            {
+                "@type": "Person",
+                "name": "Xianyang Zhang",
+                "affiliation": "Texas A&M University"
+            }
+        ],
+        "citation": {
+            "@type": "ScholarlyArticle",
+            "name": "FlashDeconv enables atlas-scale, multi-resolution spatial deconvolution via structure-preserving sketching",
+            "url": "https://doi.org/10.64898/2025.12.22.696108"
         }
     }
     </script>
