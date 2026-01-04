@@ -57,7 +57,8 @@ class FlashDeconv:
         - "pearson": Uncentered Pearson residuals Y/σ, X/σ (variance stabilizing)
         - "raw": No preprocessing (for pre-normalized or synthetic data)
     random_state : int, optional
-        Random seed for reproducibility.
+        Random seed for reproducibility. Default is 0, following scanpy convention
+        to ensure reproducible results out of the box.
     verbose : bool, default=False
         Whether to print progress.
 
@@ -91,7 +92,7 @@ class FlashDeconv:
         max_iter: int = 100,
         tol: float = 1e-4,
         preprocess: PreprocessMethod = "log_cpm",
-        random_state: Optional[int] = None,
+        random_state: Optional[int] = 0,
         verbose: bool = False,
     ):
         self.sketch_dim = sketch_dim

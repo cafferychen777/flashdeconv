@@ -166,6 +166,7 @@ fd.tl.deconvolve(
     sketch_dim=512,
     lambda_spatial=5000.0,
     key_added="flashdeconv",         # Key for results in adata_st
+    random_state=0,                  # Random seed for reproducibility
     copy=False,                      # If True, return copy instead of inplace
 )
 ```
@@ -191,7 +192,7 @@ class FlashDeconv:
         max_iter=100,                # BCD max iterations
         tol=1e-4,                    # Convergence tolerance
         preprocess="log_cpm",        # "log_cpm", "pearson", or "raw"
-        random_state=None,
+        random_state=0,              # Random seed for reproducibility
         verbose=False,
     ): ...
 
@@ -216,6 +217,7 @@ class FlashDeconv:
 | `max_iter` | int | 100 | Maximum BCD iterations |
 | `tol` | float | 1e-4 | Convergence tolerance |
 | `preprocess` | str | "log_cpm" | Preprocessing: "log_cpm" (recommended), "pearson", or "raw" |
+| `random_state` | int | 0 | Random seed for reproducibility (scanpy convention) |
 
 ### Attributes (After Fitting)
 

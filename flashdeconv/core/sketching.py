@@ -10,6 +10,8 @@ import numpy as np
 from scipy import sparse
 from typing import Union, Optional, Tuple
 
+from flashdeconv.utils.random import check_random_state
+
 ArrayLike = Union[np.ndarray, sparse.spmatrix]
 
 
@@ -42,8 +44,7 @@ def build_countsketch_matrix(
     Omega : sparse.csr_matrix of shape (n_genes, sketch_dim)
         Sparse CountSketch matrix.
     """
-    if random_state is not None:
-        np.random.seed(random_state)
+    rng = check_random_state(random_state)
 
     # Default to uniform weights
     if leverage_scores is None:
@@ -65,8 +66,8 @@ def build_countsketch_matrix(
     # Use leverage scores to create a "soft" assignment that respects importance
 
     # Simple approach: hash-based assignment with leverage-weighted repetition
-    bucket_assignments = np.random.randint(0, sketch_dim, size=n_genes)
-    signs = np.random.choice([-1, 1], size=n_genes)
+    bucket_assignments = rng.randint(0, sketch_dim, size=n_genes)
+    signs = rng.choice([-1, 1], size=n_genes)
 
     # Scale by sqrt(leverage) to preserve more signal from important genes
     # This is the "importance sampling" twist
@@ -127,8 +128,7 @@ def build_sparse_rademacher_matrix(
     Omega : sparse.csr_matrix of shape (n_genes, sketch_dim)
         Sparse Rademacher matrix.
     """
-    if random_state is not None:
-        np.random.seed(random_state)
+    rng = check_random_state(random_state)
 
     if leverage_scores is None:
         leverage_scores = np.ones(n_genes) / n_genes
@@ -146,15 +146,15 @@ def build_sparse_rademacher_matrix(
 
     for j in range(sketch_dim):
         # Sample genes for this column
-        mask = np.random.random(n_genes) < gene_probs
+        mask = rng.random(n_genes) < gene_probs
         selected_genes = np.where(mask)[0]
 
         if len(selected_genes) == 0:
             # Ensure at least one gene per column
-            selected_genes = np.array([np.random.randint(n_genes)])
+            selected_genes = np.array([rng.randint(n_genes)])
 
         # Random signs
-        signs = np.random.choice([-1, 1], size=len(selected_genes))
+        signs = rng.choice([-1, 1], size=len(selected_genes))
 
         rows.extend(selected_genes)
         cols.extend([j] * len(selected_genes))

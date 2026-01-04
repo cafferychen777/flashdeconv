@@ -14,6 +14,9 @@ from flashdeconv.utils.metrics import (
     compute_rmse,
     compute_correlation,
 )
+from flashdeconv.utils.random import (
+    check_random_state,
+)
 
 __all__ = [
     "select_hvg",
@@ -24,4 +27,5 @@ __all__ = [
     "coords_to_adjacency",
     "compute_rmse",
     "compute_correlation",
+    "check_random_state",
 ]

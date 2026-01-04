@@ -18,6 +18,7 @@ def deconvolve(
     layer_ref: Optional[str] = None,
     spatial_key: str = "spatial",
     key_added: str = "flashdeconv",
+    random_state: int = 0,
     copy: bool = False,
 ) -> Optional[Any]:
     """
@@ -52,6 +53,9 @@ def deconvolve(
         Key in ``adata_st.obsm`` for spatial coordinates. Default: "spatial".
     key_added
         Key under which results are stored. Default: "flashdeconv".
+    random_state
+        Random seed for reproducibility. Default is 0, following scanpy convention
+        to ensure reproducible results out of the box.
     copy
         If True, return a copy instead of modifying ``adata_st`` in-place.
 
@@ -109,6 +113,7 @@ def deconvolve(
         lambda_spatial=lambda_spatial,
         n_hvg=n_hvg,
         n_markers_per_type=n_markers_per_type,
+        random_state=random_state,
         verbose=False,
     )
     proportions = model.fit_transform(Y, X, coords, cell_type_names=cell_type_names)
@@ -125,6 +130,7 @@ def deconvolve(
         "n_genes_used": len(gene_names),
         "n_cell_types": len(cell_type_names),
         "cell_type_names": list(cell_type_names),
+        "random_state": random_state,
         "converged": model.info_.get("converged", False),
         "n_iterations": model.info_.get("n_iterations", 0),
     }
