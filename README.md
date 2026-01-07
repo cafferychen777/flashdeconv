@@ -86,9 +86,9 @@ While FlashDeconv works well with defaults, **adjusting `lambda_spatial`** (spat
 | Platform | Spot Size | Typical UMI/Spot | Recommended `lambda_spatial` | Rationale |
 |:---------|:----------|:-----------------|:----------------------------|:----------|
 | **Standard Visium** | 55µm | 10,000–30,000 | `1000–10000` (default: 5000) | Strong signal; minimal smoothing needed |
-| **Visium HD (16µm)** | 16µm | 500–2,000 | `5000–20000` | Moderate sparsity; leverage neighbors |
-| **Visium HD (8µm)** | 8µm | 100–500 | `10000–50000` | Very sparse; rely on spatial priors |
-| **Visium HD (2µm)** | 2µm | 10–100 | `50000–100000` | Extreme sparsity; heavy smoothing |
+| **Visium HD (16µm)** | 16µm | 200–2,000 | `5000–20000` | Moderate sparsity; leverage neighbors |
+| **Visium HD (8µm)** | 8µm | 50–500 | `10000–50000` | Very sparse; rely on spatial priors |
+| **Visium HD (2µm)** | 2µm | 1–10 | `50000–100000` | Extreme sparsity; heavy smoothing |
 | **Stereo-seq / Seq-Scope** | 0.5–1µm | 5–50 | `50000–200000` | Single-cell/subcellular resolution; extreme sparsity |
 
 > **Note:**
