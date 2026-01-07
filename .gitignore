@@ -64,6 +64,9 @@ validation/
 paper/
 data/
 
-# Figures - keep README figure, ignore others
+# Figures - keep article figures, ignore others
 figures/*
 !figures/figure1.jpeg
+!figures/figure2_mechanism.png
+!figures/figure_visium_hd.png
+!figures/figure7_tuft_discovery.png
