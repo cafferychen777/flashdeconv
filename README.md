@@ -251,6 +251,28 @@ FlashDeconv accepts multiple input formats:
 
 ---
 
+## Reference Data Quality
+
+> **The algorithm is only as good as the reference data it's given.**
+
+Deconvolution accuracy depends critically on reference quality. Before running FlashDeconv, ensure your reference data meets these criteria:
+
+| Requirement | Threshold | Why It Matters |
+|:------------|:----------|:---------------|
+| **Cells per type** | ≥500 | Fewer cells → unstable signatures |
+| **Marker expression** | ≥80% cells | Low expression → identity not captured |
+| **Marker fold-change** | ≥5× | Low FC → cannot distinguish from others |
+| **Signature correlation** | <0.95 | High correlation → algorithm cannot separate |
+
+**Common failure modes:**
+- Rare cell types with <200 cells produce noisy signatures
+- Cell types annotated only by positive markers may include contaminants
+- Similar subtypes (e.g., T cell subsets) often have correlation >0.98
+
+📖 **For detailed guidance:** See [Building High-Quality Reference Data](docs/reference_data_guide.md) — a comprehensive guide covering dual-marker annotation, QC pipelines, and troubleshooting.
+
+---
+
 ## Citation
 
 If you use FlashDeconv in your research, please cite:

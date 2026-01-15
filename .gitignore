@@ -56,7 +56,8 @@ Thumbs.db
 CARD_repo/
 
 # Development notes (keep locally, don't commit)
-docs/
+docs/*
+!docs/reference_data_guide.md
 CLAUDE.md
 
 # Reproducibility materials (moved to separate repo)
