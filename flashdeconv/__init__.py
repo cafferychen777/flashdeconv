@@ -18,7 +18,7 @@ Scanpy-style API (recommended):
 NumPy API (for more control):
 
 >>> from flashdeconv import FlashDeconv
->>> model = FlashDeconv(sketch_dim=512, lambda_spatial=5000)
+>>> model = FlashDeconv(sketch_dim=512)
 >>> proportions = model.fit_transform(Y, X, coords)
 """
 

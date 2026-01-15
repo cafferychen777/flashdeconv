@@ -29,11 +29,9 @@ class FlashDeconv:
     sketch_dim : int, default=512
         Dimension of the randomized sketch space. Higher values preserve
         more information but increase computation.
-    lambda_spatial : float or "auto", default=5000.0
+    lambda_spatial : float or "auto", default="auto"
         Spatial regularization strength. Higher values encourage smoother
-        spatial patterns. Tuned default (5000) works well for 10x Visium data.
-        Set to "auto" for automatic tuning (may underestimate for real data).
-        Typical range: 1000-10000 for Visium, lower for synthetic/clean data.
+        spatial patterns. Default "auto" automatically tunes based on data scale.
     rho_sparsity : float, default=0.01
         L1 sparsity regularization to encourage sparse solutions.
     n_hvg : int, default=2000
@@ -76,14 +74,14 @@ class FlashDeconv:
     Example
     -------
     >>> from flashdeconv import FlashDeconv
-    >>> model = FlashDeconv(sketch_dim=512, lambda_spatial=5000)
+    >>> model = FlashDeconv(sketch_dim=512)
     >>> proportions = model.fit_transform(Y, X, coords)
     """
 
     def __init__(
         self,
         sketch_dim: int = 512,
-        lambda_spatial: Union[float, str] = 5000.0,
+        lambda_spatial: Union[float, str] = "auto",
         rho_sparsity: float = 0.01,
         n_hvg: int = 2000,
         n_markers_per_type: int = 50,

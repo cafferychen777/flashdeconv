@@ -11,7 +11,7 @@ def deconvolve(
     cell_type_key: str = "cell_type",
     *,
     sketch_dim: int = 512,
-    lambda_spatial: Union[float, str] = 5000.0,
+    lambda_spatial: Union[float, str] = "auto",
     n_hvg: int = 2000,
     n_markers_per_type: int = 50,
     layer_st: Optional[str] = None,

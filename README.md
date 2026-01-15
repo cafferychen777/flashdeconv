@@ -73,29 +73,9 @@ sc.pl.spatial(adata_st, color="flashdeconv_Hepatocyte")
 ```python
 from flashdeconv import FlashDeconv
 
-model = FlashDeconv(lambda_spatial=5000)
+model = FlashDeconv()
 proportions = model.fit_transform(Y, X, coords)  # (n_spots, n_cell_types)
 ```
-
----
-
-## Best Practices: Tuning `lambda_spatial`
-
-While FlashDeconv works well with defaults, **adjusting `lambda_spatial`** (spatial regularization strength) based on your platform's **spot size** and **counts-per-spot** significantly improves results.
-
-| Platform | Spot Size | Typical UMI/Spot | Recommended `lambda_spatial` | Rationale |
-|:---------|:----------|:-----------------|:----------------------------|:----------|
-| **Standard Visium** | 55µm | 10,000–30,000 | `1000–10000` (default: 5000) | Strong signal; minimal smoothing needed |
-| **Visium HD (16µm)** | 16µm | 200–2,000 | `5000–20000` | Moderate sparsity; leverage neighbors |
-| **Visium HD (8µm)** | 8µm | 50–500 | `10000–50000` | Very sparse; rely on spatial priors |
-| **Visium HD (2µm)** | 2µm | 1–10 | `50000–100000` | Extreme sparsity; heavy smoothing |
-| **Stereo-seq / Seq-Scope** | 0.5–1µm | 5–50 | `50000–200000` | Single-cell/subcellular resolution; extreme sparsity |
-
-> **Note:**
-> - If cell type maps look **"salt-and-pepper" noisy**, increase `lambda_spatial`
-> - If maps look **overly blurred**, decrease `lambda_spatial`
-> - Use `lambda_spatial="auto"` for automatic tuning (may underestimate for real data; best for initial exploration)
-> - For **non-grid layouts** (e.g., Xenium, MERFISH), set `spatial_method="knn"` (default)
 
 ---
 
@@ -163,8 +143,6 @@ fd.tl.deconvolve(
     adata_st,                        # Spatial AnnData
     adata_ref,                       # Reference AnnData
     cell_type_key="cell_type",       # Column in adata_ref.obs
-    sketch_dim=512,
-    lambda_spatial=5000.0,
     key_added="flashdeconv",         # Key for results in adata_st
     random_state=0,                  # Random seed for reproducibility
     copy=False,                      # If True, return copy instead of inplace
@@ -183,7 +161,7 @@ class FlashDeconv:
     def __init__(
         self,
         sketch_dim=512,              # Sketch space dimension
-        lambda_spatial=5000.0,       # Spatial regularization (or "auto")
+        lambda_spatial="auto",       # Spatial regularization (auto-tuned)
         rho_sparsity=0.01,           # L1 sparsity penalty
         n_hvg=2000,                  # Number of highly variable genes
         n_markers_per_type=50,       # Marker genes per cell type
@@ -209,7 +187,7 @@ class FlashDeconv:
 | Parameter | Type | Default | Description |
 |:----------|:-----|:--------|:------------|
 | `sketch_dim` | int | 512 | Dimension of sketch space (higher = more info, slower) |
-| `lambda_spatial` | float or "auto" | 5000.0 | Spatial regularization strength (see Best Practices) |
+| `lambda_spatial` | float or "auto" | "auto" | Spatial regularization strength (auto-tuned to data scale) |
 | `rho_sparsity` | float | 0.01 | L1 sparsity penalty |
 | `n_hvg` | int | 2000 | Number of highly variable genes to select |
 | `n_markers_per_type` | int | 50 | Top markers per cell type |
