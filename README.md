@@ -123,6 +123,7 @@ model = FlashDeconv(
     lambda_spatial="auto",
     n_hvg=2000,
     k_neighbors=6,
+    random_state=0,
 )
 proportions = model.fit_transform(Y, X, coords)
 ```
@@ -136,6 +137,7 @@ proportions = model.fit_transform(Y, X, coords)
 | `n_hvg` | 2000 | Highly variable genes |
 | `k_neighbors` | 6 | Spatial graph neighbors |
 | `preprocess` | "log_cpm" | Normalization method |
+| `random_state` | 0 | Random seed for reproducibility |
 
 ### Output
 
@@ -206,6 +208,7 @@ cd flashdeconv && pip install -e ".[dev]"
 
 - [Paper reproducibility code](https://github.com/cafferychen777/flashdeconv-reproducibility)
 - [GitHub Issues](https://github.com/cafferychen777/flashdeconv/issues)
+- [BSD-3-Clause License](LICENSE)
 
 ---
 
