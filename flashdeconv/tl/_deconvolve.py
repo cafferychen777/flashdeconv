@@ -44,9 +44,10 @@ def deconvolve(
         Spatial regularization strength. Use ``"auto"`` for automatic tuning.
         Higher values encourage spatially smooth cell type distributions.
     rho_sparsity
-        L1 sparsity penalty strength. Higher values encourage sparser solutions
-        (fewer cell types per spot). Default: 0.01. Increase to 0.1-1.0 for
-        results similar to RCTD doublet mode.
+        L1 sparsity penalty as a dimensionless fraction. Internally scaled by
+        the Gram matrix diagonal to match gradient magnitude, ensuring consistent
+        effect across datasets. Default: 0.01. Increase to 0.1--1.0 for sparser
+        solutions (fewer cell types per spot).
     n_hvg
         Number of highly variable genes to select. Default: 2000.
     n_markers_per_type

@@ -33,7 +33,9 @@ class FlashDeconv:
         Spatial regularization strength. Higher values encourage smoother
         spatial patterns. Default "auto" automatically tunes based on data scale.
     rho_sparsity : float, default=0.01
-        L1 sparsity regularization to encourage sparse solutions.
+        L1 sparsity penalty as a dimensionless fraction. Internally scaled
+        by mean(diag(G)) to match the gradient magnitude, ensuring consistent
+        effect across datasets. Increase to 0.1--1.0 for sparser solutions.
     n_hvg : int, default=2000
         Number of highly variable genes to select.
     n_markers_per_type : int, default=50

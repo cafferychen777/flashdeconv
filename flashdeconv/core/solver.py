@@ -299,6 +299,14 @@ def bcd_solve(
     # H = X @ Y^T: Avoids recomputing X @ y_i in each iteration (K x N)
     H = precompute_XtY(X_sketch, Y_sketch)
 
+    # Scale rho relative to the Gram matrix diagonal so that the user-facing
+    # parameter is a dimensionless fraction independent of data magnitude.
+    # In the BCD update, r_k ~ O(diag(G)), so rho must be on the same scale
+    # for soft thresholding to have any effect.  This mirrors the scale-
+    # invariant treatment already applied to lambda.
+    gram_diag_mean = np.mean(np.diag(XtX))
+    rho = rho * gram_diag_mean
+
     # Convert adjacency to CSR for efficient neighbor access
     A_csr = A.tocsr()
     neighbor_indices = A_csr.indices.astype(np.int64)
