@@ -12,6 +12,7 @@ def deconvolve(
     *,
     sketch_dim: int = 512,
     lambda_spatial: Union[float, str] = "auto",
+    rho_sparsity: float = 0.01,
     n_hvg: int = 2000,
     n_markers_per_type: int = 50,
     preprocess: str = "log_cpm",
@@ -42,6 +43,10 @@ def deconvolve(
     lambda_spatial
         Spatial regularization strength. Use ``"auto"`` for automatic tuning.
         Higher values encourage spatially smooth cell type distributions.
+    rho_sparsity
+        L1 sparsity penalty strength. Higher values encourage sparser solutions
+        (fewer cell types per spot). Default: 0.01. Increase to 0.1-1.0 for
+        results similar to RCTD doublet mode.
     n_hvg
         Number of highly variable genes to select. Default: 2000.
     n_markers_per_type
@@ -116,6 +121,7 @@ def deconvolve(
     model = FlashDeconv(
         sketch_dim=sketch_dim,
         lambda_spatial=lambda_spatial,
+        rho_sparsity=rho_sparsity,
         n_hvg=n_hvg,
         n_markers_per_type=n_markers_per_type,
         preprocess=preprocess,
@@ -131,6 +137,7 @@ def deconvolve(
     adata.uns[f"{key_added}_params"] = {
         "sketch_dim": sketch_dim,
         "lambda_spatial": float(model.lambda_used_),
+        "rho_sparsity": rho_sparsity,
         "n_hvg": n_hvg,
         "n_markers_per_type": n_markers_per_type,
         "preprocess": preprocess,
