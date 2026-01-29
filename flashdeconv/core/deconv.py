@@ -34,8 +34,11 @@ class FlashDeconv:
         spatial patterns. Default "auto" automatically tunes based on data scale.
     rho_sparsity : float, default=0.01
         L1 sparsity penalty as a dimensionless fraction. Internally scaled
-        by mean(diag(G)) to match the gradient magnitude, ensuring consistent
-        effect across datasets. Increase to 0.1--1.0 for sparser solutions.
+        by mean(diag(G)) so that soft-thresholding is commensurate with the
+        partial residual magnitude. Note: the non-negativity constraint already
+        provides the primary sparsity; L1 offers marginal refinement, most
+        effective when K >> number of true types per spot (e.g., fine-grained
+        taxonomy with K > 30).
     n_hvg : int, default=2000
         Number of highly variable genes to select.
     n_markers_per_type : int, default=50

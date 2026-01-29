@@ -299,11 +299,15 @@ def bcd_solve(
     # H = X @ Y^T: Avoids recomputing X @ y_i in each iteration (K x N)
     H = precompute_XtY(X_sketch, Y_sketch)
 
-    # Scale rho relative to the Gram matrix diagonal so that the user-facing
-    # parameter is a dimensionless fraction independent of data magnitude.
-    # In the BCD update, r_k ~ O(diag(G)), so rho must be on the same scale
-    # for soft thresholding to have any effect.  This mirrors the scale-
-    # invariant treatment already applied to lambda.
+    # Scale rho so that the user-facing parameter is a dimensionless fraction.
+    # The partial residual r_ik ~ O(diag(G)); without scaling, rho ~ 0.01
+    # is negligible vs r_ik ~ 7000 and soft-thresholding has no effect.
+    #
+    # Note: the non-negativity constraint beta >= 0 already provides the
+    # primary sparsity (typically zeroing 50-77% of entries).  L1 is a
+    # secondary refinement that eliminates weakly-positive coefficients
+    # in the range (0, rho * G_bar].  Its marginal benefit increases with
+    # K / (true types per spot), i.e., fine-grained cell type taxonomies.
     gram_diag_mean = np.mean(np.diag(XtX))
     rho = rho * gram_diag_mean
 

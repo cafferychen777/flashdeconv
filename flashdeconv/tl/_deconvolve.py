@@ -45,9 +45,10 @@ def deconvolve(
         Higher values encourage spatially smooth cell type distributions.
     rho_sparsity
         L1 sparsity penalty as a dimensionless fraction. Internally scaled by
-        the Gram matrix diagonal to match gradient magnitude, ensuring consistent
-        effect across datasets. Default: 0.01. Increase to 0.1--1.0 for sparser
-        solutions (fewer cell types per spot).
+        mean(diag(G)) to match partial residual magnitude. The non-negativity
+        constraint provides primary sparsity; L1 is a secondary refinement,
+        most effective when the reference contains many more types than each
+        spot actually has. Default: 0.01.
     n_hvg
         Number of highly variable genes to select. Default: 2000.
     n_markers_per_type
