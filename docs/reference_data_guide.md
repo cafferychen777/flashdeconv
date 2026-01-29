@@ -20,12 +20,67 @@ Before running deconvolution, verify your reference data passes these checks:
 
 | Check | Threshold | Command |
 |:------|:----------|:--------|
+| **No Unknown cells** | 0 cells | `~obs['cell_type'].str.contains('Unknown\|UND\|Unassigned')` |
 | **Cells per type** | ≥500 (ideal: ≥2000) | `adata.obs['cell_type'].value_counts()` |
 | **Marker expression** | ≥80% cells express core markers | `(adata[mask, marker].X > 0).mean()` |
 | **Marker fold-change** | ≥5× vs other types | `type_mean / other_mean` |
 | **Signature correlation** | <0.95 between types | `np.corrcoef(signatures)` |
 
 If any check fails, your deconvolution results for that cell type will be unreliable.
+
+---
+
+## The Unknown Cell Problem
+
+Unknown/Unassigned cells in reference data cause systematic deconvolution failures. Understanding why requires examining the mathematics.
+
+> **First Principle:** *Regression-based deconvolution assumes each cell type has a distinct signature. Unknown cells violate this assumption—their signature is a mixture of other types, making them a "universal match" that absorbs proportions indiscriminately.*
+
+### Why This Happens: The Collinearity Problem
+
+Deconvolution solves: `min ||Y - Xβ||²` subject to `β ≥ 0`
+
+When X contains a column (Unknown) that is a linear combination of other columns:
+
+```
+sig_UND ≈ 0.44 × sig_Ectoderm + 0.22 × sig_Margin + 0.21 × sig_Apoptotic + ...
+```
+
+This creates **collinearity**: multiple solutions achieve similar residuals. NNLS tends to favor the "simpler" solution—assigning weight to the universal signature rather than distributing across specific types.
+
+### Empirical Evidence
+
+In zebrafish embryo data (ZESTA), we measured:
+
+| Metric | Value |
+|:-------|:------|
+| UND correlation with other types | 0.81 – 0.98 |
+| UND as linear combination of others | R² = 0.96 |
+| Proportion absorbed by UND | **63%** |
+
+The Unknown signature can be almost perfectly reconstructed from other cell types—it adds no unique information, only ambiguity.
+
+### Mathematical Consequence: Condition Number
+
+Including Unknown cells increases the condition number of the signature matrix:
+
+```
+Condition number (with UND):    59.0
+Condition number (without UND): 56.1
+```
+
+Higher condition numbers mean the linear system is more sensitive to noise, leading to unstable solutions.
+
+### Solution
+
+```python
+# Always filter before deconvolution
+ref = ref[~ref.obs['cell_type'].isin([
+    'Unknown', 'UND', 'Unassigned', 'Ambiguous', 'Mixed', 'Doublet'
+])].copy()
+```
+
+This is not FlashDeconv-specific—it affects **all regression-based methods** (RCTD, Cell2Location, CARD, SPOTlight, CIBERSORT, etc.).
 
 ---
 
@@ -249,6 +304,7 @@ def prepare_reference(adata_raw, cell_type_key, marker_dict):
 
 | Pitfall | Consequence | Prevention |
 |:--------|:------------|:-----------|
+| **Keeping Unknown/Unassigned cells** | Absorbs 60%+ of proportions | Filter before deconvolution |
 | **Automatic clustering annotation** | Includes mislabeled cells | Validate with markers |
 | **Using different species** | Gene names/expression don't match | Use same species |
 | **Ignoring batch effects** | Technical variation in signature | Batch-correct first |
@@ -288,4 +344,4 @@ Key principles:
 ## See Also
 
 - [FlashDeconv README](../README.md) — Quick start and API reference
-- [Best Practices: Tuning lambda_spatial](../README.md#best-practices-tuning-lambda_spatial) — Platform-specific parameters
+- [Stereo-seq Guide](stereo_seq_guide.md) — Platform-specific considerations and parameter sensitivity

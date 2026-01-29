@@ -147,6 +147,10 @@ fd.tl.deconvolve(..., n_hvg=3000)
 
 Or verify the reference has sufficient cells (≥500) for that type.
 
+### Unknown cells absorb most proportions
+
+If results show one generic type (e.g., "Unknown", "Unassigned") dominating, this is a reference quality issue, not a platform issue. See [The Unknown Cell Problem](reference_data_guide.md#the-unknown-cell-problem) for the mathematical explanation and solution.
+
 ---
 
 ## Benchmark Summary

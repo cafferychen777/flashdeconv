@@ -166,6 +166,9 @@ Deconvolution accuracy depends on reference quality:
 | Cells per type | ≥ 500 recommended |
 | Marker fold-change | ≥ 5× for distinguishability |
 | Signature correlation | < 0.95 between types |
+| **No Unknown cells** | Filter before deconvolution |
+
+> **Critical:** Always remove cells labeled "Unknown", "Unassigned", or similar. These cells act as universal signatures that absorb proportions from specific types—a fundamental property of regression-based deconvolution, not a FlashDeconv limitation.
 
 See [Reference Data Guide](docs/reference_data_guide.md) for details.
 
@@ -207,6 +210,7 @@ cd flashdeconv && pip install -e ".[dev]"
 ## Resources
 
 - [Paper reproducibility code](https://github.com/cafferychen777/flashdeconv-reproducibility)
+- [Reference data guide](docs/reference_data_guide.md) — Building quality reference signatures
 - [Stereo-seq guide](docs/stereo_seq_guide.md) — Platform-specific considerations
 - [GitHub Issues](https://github.com/cafferychen777/flashdeconv/issues)
 - [BSD-3-Clause License](LICENSE)
