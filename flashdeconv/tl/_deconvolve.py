@@ -14,6 +14,7 @@ def deconvolve(
     lambda_spatial: Union[float, str] = "auto",
     n_hvg: int = 2000,
     n_markers_per_type: int = 50,
+    preprocess: str = "log_cpm",
     layer_st: Optional[str] = None,
     layer_ref: Optional[str] = None,
     spatial_key: str = "spatial",
@@ -45,6 +46,10 @@ def deconvolve(
         Number of highly variable genes to select. Default: 2000.
     n_markers_per_type
         Number of marker genes per cell type. Default: 50.
+    preprocess
+        Preprocessing method. Options: "log_cpm" (recommended for sparse data
+        like Stereo-seq), "pearson" (Pearson residuals), "raw" (no preprocessing).
+        Default: "log_cpm".
     layer_st
         Layer in ``adata_st`` to use for counts. Uses ``.X`` if None.
     layer_ref
@@ -113,6 +118,7 @@ def deconvolve(
         lambda_spatial=lambda_spatial,
         n_hvg=n_hvg,
         n_markers_per_type=n_markers_per_type,
+        preprocess=preprocess,
         random_state=random_state,
         verbose=False,
     )
@@ -127,6 +133,7 @@ def deconvolve(
         "lambda_spatial": float(model.lambda_used_),
         "n_hvg": n_hvg,
         "n_markers_per_type": n_markers_per_type,
+        "preprocess": preprocess,
         "n_genes_used": len(gene_names),
         "n_cell_types": len(cell_type_names),
         "cell_type_names": list(cell_type_names),

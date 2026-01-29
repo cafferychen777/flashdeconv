@@ -136,7 +136,7 @@ proportions = model.fit_transform(Y, X, coords)
 | `lambda_spatial` | "auto" | Spatial regularization (auto-tuned) |
 | `n_hvg` | 2000 | Highly variable genes |
 | `k_neighbors` | 6 | Spatial graph neighbors |
-| `preprocess` | "log_cpm" | Normalization method |
+| `preprocess` | "log_cpm" | Normalization: "log_cpm", "pearson", or "raw" |
 | `random_state` | 0 | Random seed for reproducibility |
 
 ### Output
