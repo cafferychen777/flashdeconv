@@ -32,44 +32,49 @@ If any check fails, your deconvolution results for that cell type will be unreli
 
 ## The Unknown Cell Problem
 
-Unknown/Unassigned cells in reference data cause systematic deconvolution failures. Understanding why requires examining the mathematics.
+> **First Principle:** *Deconvolution assumes each cell type has a distinct signature. Unknown cells violate this assumption—their signature approximates the average of other types, making them match any mixed spot equally well.*
 
-> **First Principle:** *Regression-based deconvolution assumes each cell type has a distinct signature. Unknown cells violate this assumption—their signature is a mixture of other types, making them a "universal match" that absorbs proportions indiscriminately.*
+### Why Unknown Absorbs Proportions: A Causal Chain
 
-### Why This Happens: The Collinearity Problem
+**Step 1: Unknown ≈ Linear Combination of Others**
 
-Deconvolution solves: `min ||Y - Xβ||²` subject to `β ≥ 0`
-
-When X contains a column (Unknown) that is a linear combination of other columns:
+Unknown cells are defined by exclusion—they didn't cluster with any specific type. Their mean expression is therefore a weighted average:
 
 ```
-sig_UND ≈ 0.44 × sig_Ectoderm + 0.22 × sig_Margin + 0.21 × sig_Apoptotic + ...
+sig_Unknown ≈ α₁·sig_Type1 + α₂·sig_Type2 + ... + αₖ·sig_TypeK
 ```
 
-This creates **collinearity**: multiple solutions achieve similar residuals. NNLS tends to favor the "simpler" solution—assigning weight to the universal signature rather than distributing across specific types.
+In zebrafish embryo data: R² = 0.96 when fitting Unknown from other types.
 
-### Empirical Evidence
+**Step 2: This Creates Equivalent Solutions**
 
-In zebrafish embryo data (ZESTA), we measured:
-
-| Metric | Value |
-|:-------|:------|
-| UND correlation with other types | 0.81 – 0.98 |
-| UND as linear combination of others | R² = 0.96 |
-| Proportion absorbed by UND | **63%** |
-
-The Unknown signature can be almost perfectly reconstructed from other cell types—it adds no unique information, only ambiguity.
-
-### Mathematical Consequence: Condition Number
-
-Including Unknown cells increases the condition number of the signature matrix:
+Deconvolution solves `min ||Y - Xβ||²` subject to `β ≥ 0`. When one column is a linear combination of others, infinitely many β achieve the same minimum residual:
 
 ```
-Condition number (with UND):    59.0
-Condition number (without UND): 56.1
+β = [0.30, 0.25, 0.25, 0.20, 0.00]  →  residual = r
+β = [0.15, 0.12, 0.12, 0.10, 0.51]  →  residual = r  (same!)
 ```
 
-Higher condition numbers mean the linear system is more sensitive to noise, leading to unstable solutions.
+**Step 3: NNLS Prefers Unknown**
+
+Among equivalent solutions, NNLS favors Unknown because:
+- Unknown signature correlates highest with average spot expression (0.76 vs 0.73 for specific types)
+- Spatial spots are mixtures; Unknown is also a mixture
+- The algorithm finds a "shortcut": one universal signature instead of decomposing into specific types
+
+### The Residual Paradox
+
+This is the key insight that reveals the problem:
+
+| Condition | UND Proportion | Residual |
+|:----------|:---------------|:---------|
+| With Unknown | 68% | 53.1 |
+| Without Unknown | 0% | 53.3 |
+| **Difference** | **−68%** | **+0.3%** |
+
+**Unknown absorbs 68% of proportions but improves residual by only 0.3%.**
+
+This proves Unknown provides no additional explanatory power—it's a mathematical shortcut, not a biological signal. Removing Unknown forces NNLS to find the biologically meaningful solution with nearly identical fit quality.
 
 ### Solution
 
@@ -80,7 +85,7 @@ ref = ref[~ref.obs['cell_type'].isin([
 ])].copy()
 ```
 
-This is not FlashDeconv-specific—it affects **all regression-based methods** (RCTD, Cell2Location, CARD, SPOTlight, CIBERSORT, etc.).
+This affects **all regression-based methods** (RCTD, Cell2Location, CARD, SPOTlight, CIBERSORT, etc.)—it's a property of the mathematics, not any specific implementation.
 
 ---
 
