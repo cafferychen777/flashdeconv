@@ -172,12 +172,20 @@ class FlashDeconv:
             theta = 100.0  # dispersion parameter
 
             # For Y (spots): compute per-gene variance
-            Y_mean = Y.mean(axis=0, keepdims=True) + 1e-6
-            Y_var = Y_mean + Y_mean**2 / theta
-            Y_sigma = np.sqrt(Y_var)
-            Y_norm = Y / Y_sigma
+            # Handle sparse matrices which don't support keepdims
+            if issparse(Y):
+                Y_mean = np.asarray(Y.mean(axis=0)).flatten() + 1e-6
+                Y_var = Y_mean + Y_mean**2 / theta
+                Y_sigma = np.sqrt(Y_var)
+                # Divide each column by sigma (sparse-friendly)
+                Y_norm = Y.multiply(1.0 / Y_sigma)
+            else:
+                Y_mean = Y.mean(axis=0, keepdims=True) + 1e-6
+                Y_var = Y_mean + Y_mean**2 / theta
+                Y_sigma = np.sqrt(Y_var)
+                Y_norm = Y / Y_sigma
 
-            # For X (reference): use same formula
+            # For X (reference): use same formula (X is always dense)
             X_mean = X.mean(axis=0, keepdims=True) + 1e-6
             X_var = X_mean + X_mean**2 / theta
             X_sigma = np.sqrt(X_var)
