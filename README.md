@@ -207,6 +207,7 @@ cd flashdeconv && pip install -e ".[dev]"
 ## Resources
 
 - [Paper reproducibility code](https://github.com/cafferychen777/flashdeconv-reproducibility)
+- [Stereo-seq guide](docs/stereo_seq_guide.md) — Platform-specific considerations
 - [GitHub Issues](https://github.com/cafferychen777/flashdeconv/issues)
 - [BSD-3-Clause License](LICENSE)
 
