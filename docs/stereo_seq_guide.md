@@ -122,7 +122,7 @@ props = adata_st.obsm['flashdeconv']
 
 This is expected. Different methods use different:
 - **Normalization** (log-CPM vs raw counts vs Pearson)
-- **Regression models** (NNLS vs negative binomial)
+- **Regression models** (NNLS vs Poisson-lognormal likelihood)
 - **Spatial priors** (graph Laplacian vs none)
 
 Compare against biology, not other algorithms. If both methods produce anatomically consistent results, the difference reflects modeling assumptions, not errors.
