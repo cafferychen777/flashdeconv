@@ -229,12 +229,14 @@ def estimate_optimal_k(
     if n_spots <= 1:
         return 0
 
-    # Clamp to valid range
-    max_k_eff = min(max_k, n_spots - 1)
+    # Clamp to valid range: k can never exceed n_spots-1
+    upper_bound = n_spots - 1
+    max_k_eff = min(max_k, upper_bound)
+    min_k_eff = min(min_k, upper_bound)
 
     # For small datasets, use smaller k
     if n_spots < 100:
-        return min(min_k, n_spots - 1)
+        return min_k_eff
 
     # Estimate based on local density variation
     tree = cKDTree(coords)
@@ -251,6 +253,6 @@ def estimate_optimal_k(
     threshold = np.median(normalized_growth) * 0.5
     stable_k = np.argmax(normalized_growth < threshold) + 1
 
-    k = max(min_k, min(stable_k + min_k, max_k_eff))
+    k = max(min_k_eff, min(stable_k + min_k_eff, max_k_eff))
 
     return k
