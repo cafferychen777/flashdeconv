@@ -289,9 +289,9 @@ class FlashDeconv:
             else:
                 print("  No preprocessing applied (raw)")
 
-        # Step 4: Structure-preserving sketching
+        # Step 3: Structure-preserving sketching
         if self.verbose:
-            print(f"Step 4: Sketching to {self.sketch_dim} dimensions...")
+            print(f"Step 3: Sketching to {self.sketch_dim} dimensions...")
 
         Y_sketch, X_sketch, Omega = sketch_data(
             Y_tilde, X_tilde,
@@ -303,9 +303,9 @@ class FlashDeconv:
         if self.verbose:
             print(f"  Compressed {n_selected} genes -> {self.sketch_dim} dims")
 
-        # Step 5: Build spatial graph
+        # Step 4: Build spatial graph
         if self.verbose:
-            print("Step 5: Building spatial graph...")
+            print("Step 4: Building spatial graph...")
 
         A = coords_to_adjacency(
             coords,
@@ -318,21 +318,21 @@ class FlashDeconv:
         if self.verbose:
             print(f"  Average neighbors per spot: {avg_neighbors:.1f}")
 
-        # Step 6: Auto-tune lambda if needed
+        # Step 5: Auto-tune lambda if needed
         if self.lambda_spatial == "auto":
             lambda_ = auto_tune_lambda(Y_sketch, X_sketch, A)
             if self.verbose:
-                print(f"Step 6: Auto-tuned lambda = {lambda_:.4f}")
+                print(f"Step 5: Auto-tuned lambda = {lambda_:.4f}")
         else:
             lambda_ = float(self.lambda_spatial)
             if self.verbose:
-                print(f"Step 6: Using lambda = {lambda_:.4f}")
+                print(f"Step 5: Using lambda = {lambda_:.4f}")
 
         self.lambda_used_ = lambda_
 
-        # Step 7: Solve via BCD
+        # Step 6: Solve via BCD
         if self.verbose:
-            print("Step 7: Solving via Block Coordinate Descent...")
+            print("Step 6: Solving via Block Coordinate Descent...")
 
         beta, info = bcd_solve(
             Y_sketch, X_sketch, A,

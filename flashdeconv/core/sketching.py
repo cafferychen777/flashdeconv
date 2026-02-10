@@ -2,7 +2,7 @@
 Structure-preserving randomized sketching for FlashDeconv.
 
 This module implements the dimensionality reduction via sparse
-CountSketch matrices with importance sampling to preserve
+CountSketch matrices with leverage-based amplitude scaling to preserve
 signals from rare cell types.
 """
 
@@ -22,11 +22,12 @@ def build_countsketch_matrix(
     random_state: Optional[int] = None,
 ) -> sparse.csr_matrix:
     """
-    Build a sparse CountSketch matrix with importance sampling.
+    Build a sparse CountSketch matrix with leverage-based amplitude scaling.
 
     CountSketch assigns each row (gene) to exactly one column (sketch dimension)
-    with a random sign (+1 or -1). Importance sampling weights the assignment
-    probabilities by leverage scores.
+    via uniform random hashing, with a random sign (+1 or -1). Leverage scores
+    scale the entry amplitude so that high-leverage genes contribute more to the
+    sketch, preserving signal from rare cell types.
 
     Parameters
     ----------
@@ -35,7 +36,7 @@ def build_countsketch_matrix(
     sketch_dim : int
         Sketch dimension d (columns of the sketch matrix).
     leverage_scores : ndarray of shape (n_genes,), optional
-        Importance weights for each gene. Uniform if not provided.
+        Importance weights for amplitude scaling. Uniform if not provided.
     random_state : int, optional
         Random seed for reproducibility.
 
@@ -53,24 +54,11 @@ def build_countsketch_matrix(
         # Normalize to probability distribution
         leverage_scores = leverage_scores / (np.sum(leverage_scores) + 1e-10)
 
-    # Assign each gene to a sketch dimension
-    # Higher leverage = higher probability of spreading across multiple dimensions
-
-    # For CountSketch: each gene maps to exactly one bucket
-    # But we use leverage scores to influence which bucket
-
-    # Standard CountSketch: uniform random assignment
-    # We modify to use weighted sampling but ensure each gene is assigned once
-
-    # Compute bucket assignments
-    # Use leverage scores to create a "soft" assignment that respects importance
-
-    # Simple approach: hash-based assignment with leverage-weighted repetition
+    # Standard CountSketch: uniform random bucket assignment + random sign
     bucket_assignments = rng.randint(0, sketch_dim, size=n_genes)
     signs = rng.choice([-1, 1], size=n_genes)
 
-    # Scale by sqrt(leverage) to preserve more signal from important genes
-    # This is the "importance sampling" twist
+    # Scale amplitude by sqrt(leverage) so high-leverage genes contribute more
     scale_factors = np.sqrt(leverage_scores * n_genes + 1e-10)
     scale_factors = np.clip(scale_factors, 0.1, 10.0)  # Prevent extreme values
 

@@ -175,13 +175,16 @@ def align_genes(
     if len(common_genes) == 0:
         raise ValueError("No common genes found between spatial data and reference")
 
-    # Get indices
-    spatial_idx = np.array([
-        np.where(genes_spatial == g)[0][0] for g in common_genes
-    ])
-    ref_idx = np.array([
-        np.where(genes_ref == g)[0][0] for g in common_genes
-    ])
+    # Get indices via hash lookup: O(G) instead of O(G^2)
+    # setdefault keeps the first occurrence, matching np.where(...)[0][0]
+    spatial_lookup = {}
+    for i, g in enumerate(genes_spatial):
+        spatial_lookup.setdefault(g, i)
+    ref_lookup = {}
+    for i, g in enumerate(genes_ref):
+        ref_lookup.setdefault(g, i)
+    spatial_idx = np.array([spatial_lookup[g] for g in common_genes])
+    ref_idx = np.array([ref_lookup[g] for g in common_genes])
 
     # Subset
     if sparse.issparse(Y):

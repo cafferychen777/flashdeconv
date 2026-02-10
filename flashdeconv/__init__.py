@@ -22,7 +22,7 @@ NumPy API (for more control):
 >>> proportions = model.fit_transform(Y, X, coords)
 """
 
-__version__ = "0.1.4"
+__version__ = "0.1.6"
 __author__ = "FlashDeconv Team"
 
 from flashdeconv.core.deconv import FlashDeconv

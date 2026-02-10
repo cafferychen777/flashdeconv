@@ -39,14 +39,9 @@ def update_spot_with_Xty(
     """
     Update cell type abundances for a single spot using precomputed Xty.
 
-    This is the optimized version that takes precomputed X @ y_i directly,
-    avoiding redundant computation across iterations.
-
-    Solves:
-    beta_i = argmin 0.5 * ||y_i - X_sketch^T beta_i||^2
-             + lambda * ||beta_i - mean(beta_neighbors)||^2
-             + rho * ||beta_i||_1
-    subject to beta_i >= 0
+    Uses maintained residual r = XtX @ beta_i to avoid recomputing the
+    full dot product per coordinate.  When beta_i[k] does not change
+    (common under non-negativity + L1), the O(K) residual update is skipped.
 
     Parameters
     ----------
@@ -72,13 +67,18 @@ def update_spot_with_Xty(
     """
     n_cell_types = beta_i.shape[0]
 
+    # Initialize maintained residual: r = XtX @ beta_i
+    r = np.zeros(n_cell_types)
+    for k in range(n_cell_types):
+        for j in range(n_cell_types):
+            r[k] += XtX[k, j] * beta_i[j]
+
     # Coordinate descent over cell types
     for k in range(n_cell_types):
-        # Compute gradient contribution from other cell types
-        residual_k = Xty_i[k]
-        for j in range(n_cell_types):
-            if j != k:
-                residual_k -= XtX[k, j] * beta_i[j]
+        old_k = beta_i[k]
+
+        # Partial residual: exclude self-contribution from r
+        residual_k = Xty_i[k] - r[k] + XtX[k, k] * old_k
 
         # Add spatial regularization term
         if n_neighbors > 0:
@@ -93,6 +93,12 @@ def update_spot_with_Xty(
             beta_i[k] = max(0.0, beta_k_new)
         else:
             beta_i[k] = 0.0
+
+        # Update maintained residual incrementally
+        delta = beta_i[k] - old_k
+        if delta != 0.0:
+            for kk in range(n_cell_types):
+                r[kk] += delta * XtX[kk, k]
 
     return beta_i
 
@@ -137,12 +143,12 @@ def bcd_iteration(
     n_spots = beta.shape[0]
     n_cell_types = beta.shape[1]
 
-    beta_new = beta.copy()
+    beta_new = np.empty_like(beta)
 
     for i in prange(n_spots):
         # Get precomputed X @ y_i from H matrix (O(K) lookup instead of O(K*d) computation)
         Xty_i = H[:, i]
-        beta_i = beta_new[i].copy()
+        beta_i = beta[i].copy()  # warm-start from old beta (read-only)
 
         # Get neighbors
         start = neighbor_indptr[i]
@@ -325,7 +331,7 @@ def bcd_solve(
     converged = False
 
     for iteration in range(max_iter):
-        beta_old = beta.copy()
+        beta_old = beta  # reference only; bcd_iteration does not mutate input
 
         # BCD iteration (using precomputed H)
         beta = bcd_iteration(

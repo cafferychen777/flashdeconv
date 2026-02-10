@@ -9,7 +9,7 @@
 
 FlashDeconv estimates cell type proportions from spatial transcriptomics data (Visium, Visium HD, Stereo-seq). It is designed for large-scale analyses where computational efficiency is essential, while maintaining attention to low-abundance cell populations through leverage-score-based feature weighting.
 
-> **Paper:** Yang, C., Chen, J. & Zhang, X. FlashDeconv enables atlas-scale, multi-resolution spatial deconvolution via structure-preserving sketching. *bioRxiv* (2025). [DOI: 10.64898/2025.12.22.696108](https://doi.org/10.64898/2025.12.22.696108)
+> **Paper:** Yang, C., Zhang, X. & Chen, J. FlashDeconv enables atlas-scale, multi-resolution spatial deconvolution via structure-preserving sketching. *bioRxiv* (2025). [DOI: 10.64898/2025.12.22.696108](https://doi.org/10.64898/2025.12.22.696108)
 
 ---
 
@@ -194,11 +194,15 @@ cd flashdeconv && pip install -e ".[dev]"
 
 ## Citation
 
+If you use FlashDeconv in your research, please cite:
+
+> Yang, C., Zhang, X. & Chen, J. FlashDeconv enables atlas-scale, multi-resolution spatial deconvolution via structure-preserving sketching. *bioRxiv* (2025). [DOI: 10.64898/2025.12.22.696108](https://doi.org/10.64898/2025.12.22.696108)
+
 ```bibtex
 @article{yang2025flashdeconv,
   title={FlashDeconv enables atlas-scale, multi-resolution spatial deconvolution
          via structure-preserving sketching},
-  author={Yang, Chen and Chen, Jun and Zhang, Xianyang},
+  author={Yang, Chen and Zhang, Xianyang and Chen, Jun},
   journal={bioRxiv},
   year={2025},
   doi={10.64898/2025.12.22.696108}

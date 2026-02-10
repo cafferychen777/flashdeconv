@@ -95,25 +95,28 @@ def select_hvg(
         gene_vars = np.var(Y_log, axis=0, ddof=1)
 
     # Compute standardized dispersion
-    # Bin genes by mean expression
+    # Bin genes by mean expression (requires >= 2 positive-mean genes)
     n_bins = 20
-    bins = np.percentile(gene_means[gene_means > 0], np.linspace(0, 100, n_bins + 1))
-    bins = np.unique(bins)
-
-    # Assign genes to bins
-    gene_bins = np.digitize(gene_means, bins) - 1
-    gene_bins = np.clip(gene_bins, 0, len(bins) - 2)
-
-    # Compute normalized dispersion within each bin
+    positive_means = gene_means[gene_means > 0]
     normalized_dispersion = np.zeros(n_genes)
 
-    for i in range(len(bins) - 1):
-        mask = gene_bins == i
-        if np.sum(mask) > 1:
-            bin_vars = gene_vars[mask]
-            bin_mean = np.mean(bin_vars)
-            bin_std = np.std(bin_vars) + 1e-10
-            normalized_dispersion[mask] = (bin_vars - bin_mean) / bin_std
+    if len(positive_means) >= 2:
+        bins = np.percentile(positive_means, np.linspace(0, 100, n_bins + 1))
+        bins = np.unique(bins)
+
+        if len(bins) >= 2:
+            # Assign genes to bins
+            gene_bins = np.digitize(gene_means, bins) - 1
+            gene_bins = np.clip(gene_bins, 0, len(bins) - 2)
+
+            # Compute normalized dispersion within each bin
+            for i in range(len(bins) - 1):
+                mask = gene_bins == i
+                if np.sum(mask) > 1:
+                    bin_vars = gene_vars[mask]
+                    bin_mean = np.mean(bin_vars)
+                    bin_std = np.std(bin_vars) + 1e-10
+                    normalized_dispersion[mask] = (bin_vars - bin_mean) / bin_std
 
     # Filter by mean expression
     mean_mask = (gene_means >= min_mean) & (gene_means <= max_mean)
@@ -189,11 +192,11 @@ def select_markers(
     # For each cell type, find top markers
     all_markers = []
     marker_assignments = []
+    top_cell_type = np.argmax(X_norm, axis=0)  # compute once: O(K*G)
 
     for k in range(n_cell_types):
         # Genes where this cell type has highest expression
-        is_top = np.argmax(X_norm, axis=0) == k
-        top_genes = np.where(is_top)[0]
+        top_genes = np.where(top_cell_type == k)[0]
 
         if len(top_genes) > 0:
             # Rank by specificity

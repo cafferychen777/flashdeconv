@@ -143,7 +143,7 @@ def deconvolve(
         "n_hvg": n_hvg,
         "n_markers_per_type": n_markers_per_type,
         "preprocess": preprocess,
-        "n_genes_used": len(gene_names),
+        "n_genes_used": len(model.gene_idx_),
         "n_cell_types": len(cell_type_names),
         "cell_type_names": list(cell_type_names),
         "random_state": random_state,
