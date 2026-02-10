@@ -37,17 +37,26 @@ def build_knn_graph(
     """
     n_spots = coords.shape[0]
 
+    # Clamp k to valid range: cannot query more neighbors than exist
+    k_actual = min(k, n_spots - 1)
+
+    if k_actual <= 0:
+        # Single spot or empty: no neighbors possible
+        if include_self and n_spots > 0:
+            return sparse.eye(n_spots, dtype=np.float64, format="csr")
+        return sparse.csr_matrix((n_spots, n_spots), dtype=np.float64)
+
     # Build KD-tree for efficient neighbor search
     tree = cKDTree(coords)
 
-    # Query k+1 neighbors (includes self)
-    distances, indices = tree.query(coords, k=k + 1)
+    # Query k_actual+1 neighbors (includes self)
+    distances, indices = tree.query(coords, k=k_actual + 1)
 
     # Build adjacency matrix
     rows, cols = [], []
 
     for i in range(n_spots):
-        for j_idx in range(k + 1):
+        for j_idx in range(k_actual + 1):
             j = indices[i, j_idx]
             if include_self or i != j:
                 rows.append(i)

@@ -105,10 +105,7 @@ def load_reference(
     else:
         expr = adata_ref.X
 
-    if sparse.issparse(expr):
-        expr = expr.toarray()
-    else:
-        expr = np.array(expr)
+    is_sparse = sparse.issparse(expr)
 
     # Get cell type labels
     if cell_type_key not in adata_ref.obs:
@@ -119,15 +116,22 @@ def load_reference(
     n_cell_types = len(unique_types)
     n_genes = expr.shape[1]
 
-    # Aggregate by cell type
+    # Aggregate by cell type (sparse-aware to avoid memory blowup)
     X = np.zeros((n_cell_types, n_genes), dtype=np.float64)
 
     for i, ct in enumerate(unique_types):
         mask = cell_types == ct
+        subset = expr[mask]
         if method == "mean":
-            X[i] = np.mean(expr[mask], axis=0)
+            if is_sparse:
+                X[i] = np.asarray(subset.mean(axis=0)).ravel()
+            else:
+                X[i] = np.mean(subset, axis=0)
         elif method == "sum":
-            X[i] = np.sum(expr[mask], axis=0)
+            if is_sparse:
+                X[i] = np.asarray(subset.sum(axis=0)).ravel()
+            else:
+                X[i] = np.sum(subset, axis=0)
         else:
             raise ValueError(f"Unknown aggregation method: {method}")
 
