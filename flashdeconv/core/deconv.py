@@ -98,6 +98,20 @@ class FlashDeconv:
         random_state: Optional[int] = 0,
         verbose: bool = False,
     ):
+        # Parameter validation
+        if sketch_dim <= 0:
+            raise ValueError(f"sketch_dim must be positive, got {sketch_dim}")
+        if k_neighbors < 0:
+            raise ValueError(f"k_neighbors must be non-negative, got {k_neighbors}")
+        if max_iter < 0:
+            raise ValueError(f"max_iter must be non-negative, got {max_iter}")
+        if tol <= 0:
+            raise ValueError(f"tol must be positive, got {tol}")
+        if isinstance(lambda_spatial, (int, float)) and lambda_spatial < 0:
+            raise ValueError(f"lambda_spatial must be non-negative, got {lambda_spatial}")
+        if rho_sparsity < 0:
+            raise ValueError(f"rho_sparsity must be non-negative, got {rho_sparsity}")
+
         self.sketch_dim = sketch_dim
         self.lambda_spatial = lambda_spatial
         self.rho_sparsity = rho_sparsity

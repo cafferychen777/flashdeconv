@@ -68,18 +68,22 @@ def select_hvg(
         gene_sums = np.array(Y_norm.sum(axis=0)).flatten()
         gene_means = gene_sums / N
 
-        # Compute E[X^2] without creating power(2) matrix copy
-        # bincount efficiently computes column-wise sum of squares
-        data_sq = Y_norm.data ** 2  # O(nnz) temporary
-        col_sum_sq = np.bincount(Y_norm.indices, weights=data_sq, minlength=n_genes)
-        mean_sq = col_sum_sq / N
+        if N >= 2:
+            # Compute E[X^2] without creating power(2) matrix copy
+            # bincount efficiently computes column-wise sum of squares
+            data_sq = Y_norm.data ** 2  # O(nnz) temporary
+            col_sum_sq = np.bincount(Y_norm.indices, weights=data_sq, minlength=n_genes)
+            mean_sq = col_sum_sq / N
 
-        # Sample variance (ddof=1): Var = N/(N-1) * (E[X^2] - E[X]^2)
-        gene_vars = N / (N - 1) * (mean_sq - gene_means ** 2)
-        gene_vars = np.maximum(gene_vars, 0)  # numerical stability
+            # Sample variance (ddof=1): Var = N/(N-1) * (E[X^2] - E[X]^2)
+            gene_vars = N / (N - 1) * (mean_sq - gene_means ** 2)
+            gene_vars = np.maximum(gene_vars, 0)  # numerical stability
+        else:
+            # Single sample: variance undefined, fall back to dispersion=0
+            gene_vars = np.zeros(n_genes)
 
     else:
-        # Dense implementation (original)
+        # Dense implementation
         Y_dense = np.asarray(Y)
 
         # Normalize by total counts
@@ -92,7 +96,10 @@ def select_hvg(
 
         # Compute mean and variance
         gene_means = np.mean(Y_log, axis=0)
-        gene_vars = np.var(Y_log, axis=0, ddof=1)
+        if N >= 2:
+            gene_vars = np.var(Y_log, axis=0, ddof=1)
+        else:
+            gene_vars = np.zeros(n_genes)
 
     # Compute standardized dispersion
     # Bin genes by mean expression (requires >= 2 positive-mean genes)
@@ -170,6 +177,12 @@ def select_markers(
     # Normalize X row-wise
     X_norm = X / (np.sum(X, axis=1, keepdims=True) + 1e-10)
 
+    if n_cell_types == 1:
+        # Single cell type: all genes are markers, specificity is uniform
+        marker_idx = np.arange(min(n_markers, n_genes))
+        marker_assignments = np.zeros(len(marker_idx), dtype=int)
+        return marker_idx, marker_assignments
+
     if method == "diff":
         # For each gene, compute difference between top and second expression
         sorted_expr = np.sort(X_norm, axis=0)[::-1]
@@ -178,7 +191,7 @@ def select_markers(
     elif method == "ratio":
         # Ratio of max to mean of others
         max_expr = np.max(X_norm, axis=0)
-        mean_others = (np.sum(X_norm, axis=0) - max_expr) / (n_cell_types - 1 + 1e-10)
+        mean_others = (np.sum(X_norm, axis=0) - max_expr) / (n_cell_types - 1)
         specificity = max_expr / (mean_others + 1e-10)
 
     elif method == "specificity":

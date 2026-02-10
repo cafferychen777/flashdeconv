@@ -329,6 +329,8 @@ def bcd_solve(
     # Track convergence
     objectives = []
     converged = False
+    iteration = -1
+    rel_change = 0.0
 
     for iteration in range(max_iter):
         beta_old = beta  # reference only; bcd_iteration does not mutate input

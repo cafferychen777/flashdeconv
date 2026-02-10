@@ -52,18 +52,19 @@ def build_knn_graph(
     # Query k_actual+1 neighbors (includes self)
     distances, indices = tree.query(coords, k=k_actual + 1)
 
-    # Build adjacency matrix
-    rows, cols = [], []
+    # Build adjacency matrix (vectorized)
+    # indices has shape (n_spots, k_actual+1), includes self
+    row_idx = np.repeat(np.arange(n_spots), k_actual + 1)
+    col_idx = indices.ravel()
 
-    for i in range(n_spots):
-        for j_idx in range(k_actual + 1):
-            j = indices[i, j_idx]
-            if include_self or i != j:
-                rows.append(i)
-                cols.append(j)
+    if not include_self:
+        # Remove self-loops
+        mask = row_idx != col_idx
+        row_idx = row_idx[mask]
+        col_idx = col_idx[mask]
 
-    data = np.ones(len(rows), dtype=np.float64)
-    A = sparse.csr_matrix((data, (rows, cols)), shape=(n_spots, n_spots))
+    data = np.ones(len(row_idx), dtype=np.float64)
+    A = sparse.csr_matrix((data, (row_idx, col_idx)), shape=(n_spots, n_spots))
 
     # Make symmetric (undirected graph)
     A = A + A.T
@@ -217,6 +218,10 @@ def estimate_optimal_k(
         Estimated optimal k.
     """
     n_spots = coords.shape[0]
+
+    # Cannot have neighbors with fewer than 2 points
+    if n_spots <= 1:
+        return 0
 
     # For small datasets, use smaller k
     if n_spots < 100:

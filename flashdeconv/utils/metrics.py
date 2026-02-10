@@ -98,10 +98,14 @@ def compute_correlation(
         from scipy.stats import spearmanr
 
         def corr_func(x, y):
-            return spearmanr(x, y)[0]
+            # spearmanr returns nan for constant vectors; treat as 0 correlation
+            r = spearmanr(x, y)[0]
+            return 0.0 if np.isnan(r) else r
     else:
         def corr_func(x, y):
-            return np.corrcoef(x, y)[0, 1]
+            # np.corrcoef returns nan for constant vectors; treat as 0 correlation
+            r = np.corrcoef(x, y)[0, 1]
+            return 0.0 if np.isnan(r) else r
 
     if per_cell_type:
         n_cell_types = pred.shape[1]

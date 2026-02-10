@@ -109,7 +109,7 @@ def load_reference(
 
     # Get cell type labels
     if cell_type_key not in adata_ref.obs:
-        raise ValueError(f"Cell type key '{cell_type_key}' not found in adata.obs")
+        raise ValueError(f"Cell type key '{cell_type_key}' not found in adata_ref.obs")
 
     cell_types = np.array(adata_ref.obs[cell_type_key])
     unique_types = np.unique(cell_types)
@@ -186,11 +186,8 @@ def align_genes(
     spatial_idx = np.array([spatial_lookup[g] for g in common_genes])
     ref_idx = np.array([ref_lookup[g] for g in common_genes])
 
-    # Subset
-    if sparse.issparse(Y):
-        Y_aligned = Y[:, spatial_idx]
-    else:
-        Y_aligned = Y[:, spatial_idx]
+    # Subset (works for both sparse and dense)
+    Y_aligned = Y[:, spatial_idx]
 
     X_aligned = X[:, ref_idx]
 
