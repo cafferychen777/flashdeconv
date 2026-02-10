@@ -111,6 +111,10 @@ class FlashDeconv:
             raise ValueError(f"lambda_spatial must be non-negative, got {lambda_spatial}")
         if rho_sparsity < 0:
             raise ValueError(f"rho_sparsity must be non-negative, got {rho_sparsity}")
+        if n_hvg < 0:
+            raise ValueError(f"n_hvg must be non-negative, got {n_hvg}")
+        if n_markers_per_type < 0:
+            raise ValueError(f"n_markers_per_type must be non-negative, got {n_markers_per_type}")
 
         self.sketch_dim = sketch_dim
         self.lambda_spatial = lambda_spatial

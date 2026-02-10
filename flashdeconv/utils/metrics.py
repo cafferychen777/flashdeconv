@@ -94,18 +94,20 @@ def compute_correlation(
     corr : float or ndarray
         Correlation value(s).
     """
+    def _safe_corr(x, y, func):
+        """Return 0 for constant input (correlation undefined)."""
+        if np.ptp(x) == 0 or np.ptp(y) == 0:
+            return 0.0
+        return func(x, y)
+
     if method == "spearman":
         from scipy.stats import spearmanr
 
         def corr_func(x, y):
-            # spearmanr returns nan for constant vectors; treat as 0 correlation
-            r = spearmanr(x, y)[0]
-            return 0.0 if np.isnan(r) else r
+            return _safe_corr(x, y, lambda a, b: spearmanr(a, b)[0])
     else:
         def corr_func(x, y):
-            # np.corrcoef returns nan for constant vectors; treat as 0 correlation
-            r = np.corrcoef(x, y)[0, 1]
-            return 0.0 if np.isnan(r) else r
+            return _safe_corr(x, y, lambda a, b: np.corrcoef(a, b)[0, 1])
 
     if per_cell_type:
         n_cell_types = pred.shape[1]

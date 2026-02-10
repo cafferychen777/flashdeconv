@@ -219,9 +219,18 @@ def estimate_optimal_k(
     """
     n_spots = coords.shape[0]
 
+    # Parameter validation
+    if min_k < 0:
+        raise ValueError(f"min_k must be non-negative, got {min_k}")
+    if max_k < min_k:
+        raise ValueError(f"max_k must be >= min_k, got max_k={max_k} < min_k={min_k}")
+
     # Cannot have neighbors with fewer than 2 points
     if n_spots <= 1:
         return 0
+
+    # Clamp to valid range
+    max_k_eff = min(max_k, n_spots - 1)
 
     # For small datasets, use smaller k
     if n_spots < 100:
@@ -229,7 +238,7 @@ def estimate_optimal_k(
 
     # Estimate based on local density variation
     tree = cKDTree(coords)
-    distances, _ = tree.query(coords, k=max_k + 1)
+    distances, _ = tree.query(coords, k=max_k_eff + 1)
 
     # Find k where distance growth stabilizes
     mean_distances = np.mean(distances, axis=0)[1:]  # Exclude self
@@ -242,6 +251,6 @@ def estimate_optimal_k(
     threshold = np.median(normalized_growth) * 0.5
     stable_k = np.argmax(normalized_growth < threshold) + 1
 
-    k = max(min_k, min(stable_k + min_k, max_k))
+    k = max(min_k, min(stable_k + min_k, max_k_eff))
 
     return k

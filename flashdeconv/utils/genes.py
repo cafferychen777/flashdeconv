@@ -174,13 +174,19 @@ def select_markers(
     """
     n_cell_types, n_genes = X.shape
 
+    if n_markers < 0:
+        raise ValueError(f"n_markers must be non-negative, got {n_markers}")
+
+    if n_markers == 0:
+        return np.array([], dtype=np.intp), np.array([], dtype=np.intp)
+
     # Normalize X row-wise
     X_norm = X / (np.sum(X, axis=1, keepdims=True) + 1e-10)
 
     if n_cell_types == 1:
         # Single cell type: all genes are markers, specificity is uniform
         marker_idx = np.arange(min(n_markers, n_genes))
-        marker_assignments = np.zeros(len(marker_idx), dtype=int)
+        marker_assignments = np.zeros(len(marker_idx), dtype=np.intp)
         return marker_idx, marker_assignments
 
     if method == "diff":
@@ -320,8 +326,13 @@ def select_informative_genes(
     # Select markers
     marker_idx, _ = select_markers(X, n_markers=n_markers_per_type)
 
-    # Union of HVGs and markers
-    gene_idx = np.union1d(hvg_idx, marker_idx)
+    # Union of HVGs and markers (ensure integer index dtype)
+    gene_idx = np.union1d(hvg_idx, marker_idx).astype(np.intp)
+
+    if len(gene_idx) == 0:
+        raise ValueError(
+            "No genes selected. Increase n_hvg or n_markers_per_type."
+        )
 
     # Compute leverage scores for selected genes
     X_subset = X[:, gene_idx]
