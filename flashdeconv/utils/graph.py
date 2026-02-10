@@ -13,6 +13,15 @@ from typing import Union, Optional, Tuple, Literal
 ArrayLike = Union[np.ndarray, sparse.spmatrix]
 
 
+def _validate_coords(coords: np.ndarray) -> None:
+    """Check that coords is a 2D array with at least 1 coordinate dimension."""
+    if coords.ndim != 2 or coords.shape[1] == 0:
+        raise ValueError(
+            f"coords must be 2D with at least 1 coordinate dimension, "
+            f"got shape {coords.shape}"
+        )
+
+
 def build_knn_graph(
     coords: np.ndarray,
     k: int = 6,
@@ -35,6 +44,7 @@ def build_knn_graph(
     A : sparse.csr_matrix of shape (n_spots, n_spots)
         Binary adjacency matrix.
     """
+    _validate_coords(coords)
     n_spots = coords.shape[0]
 
     # Clamp k to valid range: cannot query more neighbors than exist
@@ -95,6 +105,7 @@ def build_radius_graph(
     A : sparse.csr_matrix of shape (n_spots, n_spots)
         Binary adjacency matrix.
     """
+    _validate_coords(coords)
     n_spots = coords.shape[0]
 
     # Build KD-tree
@@ -141,7 +152,11 @@ def build_grid_graph(
     A : sparse.csr_matrix of shape (n_spots, n_spots)
         Binary adjacency matrix.
     """
+    _validate_coords(coords)
     n_spots = coords.shape[0]
+
+    if n_spots <= 1:
+        return sparse.csr_matrix((n_spots, n_spots), dtype=np.float64)
 
     if grid_spacing is None:
         # Auto-detect grid spacing from nearest neighbor distances

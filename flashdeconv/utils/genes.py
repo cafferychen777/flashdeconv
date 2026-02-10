@@ -177,7 +177,7 @@ def select_markers(
     if n_markers < 0:
         raise ValueError(f"n_markers must be non-negative, got {n_markers}")
 
-    if n_markers == 0:
+    if n_markers == 0 or n_cell_types == 0:
         return np.array([], dtype=np.intp), np.array([], dtype=np.intp)
 
     # Normalize X row-wise

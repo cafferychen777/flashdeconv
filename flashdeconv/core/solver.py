@@ -296,6 +296,18 @@ def bcd_solve(
     n_spots, sketch_dim = Y_sketch.shape
     n_cell_types = X_sketch.shape[0]
 
+    # Handle empty input
+    if n_spots == 0 or n_cell_types == 0:
+        beta = np.empty((n_spots, n_cell_types), dtype=np.float64)
+        info = {
+            'converged': True,
+            'n_iterations': 0,
+            'final_objective': 0.0,
+            'objectives': [],
+            'final_change': 0.0,
+        }
+        return beta, info
+
     # Initialize beta (uniform proportions)
     beta = np.ones((n_spots, n_cell_types), dtype=np.float64) / n_cell_types
 
