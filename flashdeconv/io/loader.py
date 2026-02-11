@@ -223,9 +223,9 @@ def result_to_anndata(
 
     # Create DataFrame with results
     if cell_type_names is not None:
-        columns = cell_type_names
+        columns = np.asarray(cell_type_names)
     else:
-        columns = [f"CellType_{i}" for i in range(beta.shape[1])]
+        columns = np.array([f"CellType_{i}" for i in range(beta.shape[1])])
 
     df = pd.DataFrame(
         beta,

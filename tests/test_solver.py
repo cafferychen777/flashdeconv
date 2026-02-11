@@ -1,5 +1,7 @@
 """Tests for BCD solver module."""
 
+import hashlib
+import inspect
 import numpy as np
 import pytest
 from scipy import sparse
@@ -170,13 +172,19 @@ class TestNormalizeProportions:
         np.testing.assert_allclose(props[1], [0.5, 0.5])
 
     def test_handles_zeros(self):
-        """Test handling of all-zero rows."""
-        beta = np.array([[0, 0], [1, 1]])
+        """Test all-zero rows get uniform distribution and sum to 1."""
+        beta = np.array([[0, 0, 0], [1, 2, 3], [0, 0, 0]])
         props = normalize_proportions(beta)
 
-        # Zero row should still produce valid output
         assert not np.any(np.isnan(props))
         assert not np.any(np.isinf(props))
+        # Every row must sum to 1, including all-zero rows
+        np.testing.assert_allclose(props.sum(axis=1), 1.0)
+        # All-zero rows should be uniform 1/K
+        np.testing.assert_allclose(props[0], [1/3, 1/3, 1/3])
+        np.testing.assert_allclose(props[2], [1/3, 1/3, 1/3])
+        # Normal row preserves ratios
+        np.testing.assert_allclose(props[1], [1/6, 2/6, 3/6])
 
 
 class TestObjectiveFunction:
@@ -217,3 +225,73 @@ class TestObjectiveFunction:
         # With perfect fit, fidelity term should be ~0
         obj = compute_objective(Y_sketch, X_sketch, beta, L, lambda_=0.0, rho=0.0)
         np.testing.assert_allclose(obj, 0, atol=1e-10)
+
+    def test_matches_algebraic_expansion(self):
+        """Objective should match algebraic expansion of fidelity term."""
+        np.random.seed(123)
+
+        n_spots, n_cell_types, d = 40, 6, 64
+        Y_sketch = np.random.randn(n_spots, d)
+        X_sketch = np.random.randn(n_cell_types, d)
+        beta = np.random.rand(n_spots, n_cell_types)
+
+        coords = np.random.rand(n_spots, 2)
+        A = build_knn_graph(coords, k=5)
+        L = compute_laplacian(A)
+
+        lambda_ = 0.2
+        rho = 0.03
+
+        # Expected fidelity via expansion: ||Y - βX||²_F = ||Y||² - 2·Tr(Hβ) + Tr((β^Tβ)·G)
+        H = X_sketch @ Y_sketch.T  # (K, N)
+        XtX = X_sketch @ X_sketch.T  # (K, K)
+        YtY = np.einsum("ij,ij->", Y_sketch, Y_sketch)
+        cross = np.einsum("ki,ik->", H, beta)
+        BtB = beta.T @ beta
+        quad = np.einsum("ij,ij->", BtB, XtX)
+        fidelity = 0.5 * (YtY - 2.0 * cross + quad)
+
+        Lbeta = L @ beta
+        spatial = lambda_ * np.sum(beta * Lbeta)
+        sparsity = rho * np.sum(np.abs(beta))
+        expected = fidelity + spatial + sparsity
+
+        obj_plain = compute_objective(Y_sketch, X_sketch, beta, L, lambda_=lambda_, rho=rho)
+        np.testing.assert_allclose(obj_plain, expected, rtol=1e-10, atol=1e-8)
+
+        # If the implementation supports the fast-path args, it must agree with the plain path.
+        sig = inspect.signature(compute_objective)
+        if "H" in sig.parameters and "XtX" in sig.parameters:
+            obj_fast = compute_objective(
+                Y_sketch, X_sketch, beta, L, lambda_=lambda_, rho=rho, H=H, XtX=XtX
+            )
+            np.testing.assert_allclose(obj_fast, obj_plain, rtol=1e-10, atol=1e-8)
+
+
+class TestDeterminism:
+    """Tests for deterministic solver output with fixed inputs."""
+
+    def test_bcd_solve_deterministic(self):
+        np.random.seed(42)
+
+        n_spots = 60
+        n_cell_types = 7
+        sketch_dim = 48
+
+        X_sketch = np.random.randn(n_cell_types, sketch_dim)
+        beta_true = np.random.rand(n_spots, n_cell_types)
+        beta_true = beta_true / beta_true.sum(axis=1, keepdims=True)
+        Y_sketch = beta_true @ X_sketch + 0.05 * np.random.randn(n_spots, sketch_dim)
+
+        coords = np.random.rand(n_spots, 2)
+        A = build_knn_graph(coords, k=4)
+
+        beta1, info1 = bcd_solve(Y_sketch, X_sketch, A, lambda_=0.1, rho=0.01, max_iter=30, tol=1e-6)
+        beta2, info2 = bcd_solve(Y_sketch, X_sketch, A, lambda_=0.1, rho=0.01, max_iter=30, tol=1e-6)
+
+        # Use a stable hash to avoid huge diffs on failure.
+        h1 = hashlib.sha256(beta1.tobytes()).hexdigest()
+        h2 = hashlib.sha256(beta2.tobytes()).hexdigest()
+        assert h1 == h2
+        assert info1["converged"] == info2["converged"]
+        assert info1["n_iterations"] == info2["n_iterations"]

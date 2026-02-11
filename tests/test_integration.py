@@ -235,6 +235,135 @@ class TestFlashDeconvIntegration:
         assert corr > 0.3, f"Correlation too low: {corr}"
 
 
+    def test_spatial_method_radius(self, synthetic_data):
+        """Test that spatial_method='radius' works end-to-end."""
+        Y, X, coords, _ = synthetic_data
+
+        model = FlashDeconv(
+            sketch_dim=64,
+            spatial_method="radius",
+            radius=2.0,
+            max_iter=20,
+        )
+        proportions = model.fit_transform(Y, X, coords)
+
+        assert proportions.shape == (100, 5)
+        np.testing.assert_allclose(proportions.sum(axis=1), 1.0)
+        assert np.all(proportions >= 0)
+
+    def test_spatial_method_radius_missing_radius(self):
+        """Test that spatial_method='radius' without radius raises early."""
+        with pytest.raises(ValueError, match="radius must be specified"):
+            FlashDeconv(spatial_method="radius")
+
+    def test_spatial_method_grid(self, synthetic_data):
+        """Test that spatial_method='grid' works end-to-end."""
+        Y, X, coords, _ = synthetic_data
+
+        model = FlashDeconv(
+            sketch_dim=64,
+            spatial_method="grid",
+            max_iter=20,
+        )
+        proportions = model.fit_transform(Y, X, coords)
+
+        assert proportions.shape == (100, 5)
+        np.testing.assert_allclose(proportions.sum(axis=1), 1.0)
+
+
+class TestDeconvolveScanpyAPI:
+    """Test scanpy-style fd.tl.deconvolve parameter forwarding."""
+
+    @pytest.fixture
+    def adata_pair(self):
+        """Build minimal AnnData objects for the scanpy API."""
+        anndata = pytest.importorskip("anndata")
+        import pandas as pd
+
+        np.random.seed(42)
+        n_spots, n_genes, n_cells, n_types = 80, 300, 200, 4
+
+        # Spatial AnnData
+        adata_st = anndata.AnnData(
+            X=np.random.poisson(5, (n_spots, n_genes)).astype(float),
+            obsm={"spatial": np.random.rand(n_spots, 2) * 10},
+        )
+        adata_st.var_names = [f"gene_{i}" for i in range(n_genes)]
+
+        # Reference AnnData
+        labels = np.array([f"type_{i}" for i in range(n_types)])
+        cell_labels = np.repeat(labels, n_cells // n_types)
+        adata_ref = anndata.AnnData(
+            X=np.random.poisson(5, (n_cells, n_genes)).astype(float),
+            obs=pd.DataFrame({"cell_type": cell_labels}),
+        )
+        adata_ref.var_names = [f"gene_{i}" for i in range(n_genes)]
+
+        return adata_st, adata_ref
+
+    def test_deconvolve_forwards_k_neighbors(self, adata_pair):
+        """Test that k_neighbors is forwarded through tl.deconvolve."""
+        from flashdeconv.tl import deconvolve
+
+        adata_st, adata_ref = adata_pair
+        deconvolve(adata_st, adata_ref, k_neighbors=4, sketch_dim=32)
+
+        params = adata_st.uns["flashdeconv_params"]
+        assert params["k_neighbors"] == 4
+        assert params["spatial_method"] == "knn"
+
+    def test_deconvolve_forwards_radius(self, adata_pair):
+        """Test that spatial_method and radius are forwarded through tl.deconvolve."""
+        from flashdeconv.tl import deconvolve
+
+        adata_st, adata_ref = adata_pair
+        deconvolve(
+            adata_st, adata_ref,
+            spatial_method="radius",
+            radius=3.0,
+            sketch_dim=32,
+        )
+
+        params = adata_st.uns["flashdeconv_params"]
+        assert params["spatial_method"] == "radius"
+        assert params["radius"] == 3.0
+
+
+class TestResultToAnndata:
+    """Test result_to_anndata edge cases."""
+
+    def test_cell_type_names_none(self):
+        """Test result_to_anndata works when cell_type_names is None."""
+        anndata = pytest.importorskip("anndata")
+        from flashdeconv.io.loader import result_to_anndata
+
+        n_spots, n_types = 30, 4
+        beta = np.random.dirichlet(np.ones(n_types), size=n_spots)
+        adata = anndata.AnnData(X=np.zeros((n_spots, 10)))
+
+        result_to_anndata(beta, adata, cell_type_names=None)
+
+        assert "flashdeconv" in adata.obsm
+        assert f"flashdeconv_dominant" in adata.obs
+        # Dominant should be one of the auto-generated names
+        assert all(v.startswith("CellType_") for v in adata.obs["flashdeconv_dominant"])
+
+    def test_cell_type_names_list(self):
+        """Test result_to_anndata works when cell_type_names is a plain list."""
+        anndata = pytest.importorskip("anndata")
+        from flashdeconv.io.loader import result_to_anndata
+
+        n_spots = 20
+        names = ["Neuron", "Astrocyte", "Microglia"]
+        beta = np.random.dirichlet(np.ones(3), size=n_spots)
+        adata = anndata.AnnData(X=np.zeros((n_spots, 10)))
+
+        result_to_anndata(beta, adata, cell_type_names=names)
+
+        assert "flashdeconv" in adata.obsm
+        assert set(adata.obs["flashdeconv_dominant"].unique()).issubset(set(names))
+
+
 class TestFlashDeconvErrors:
     """Test error handling."""
 

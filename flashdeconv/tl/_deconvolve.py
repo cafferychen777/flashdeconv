@@ -15,6 +15,9 @@ def deconvolve(
     rho_sparsity: float = 0.01,
     n_hvg: int = 2000,
     n_markers_per_type: int = 50,
+    spatial_method: str = "knn",
+    k_neighbors: int = 6,
+    radius: Optional[float] = None,
     preprocess: str = "log_cpm",
     layer_st: Optional[str] = None,
     layer_ref: Optional[str] = None,
@@ -53,6 +56,16 @@ def deconvolve(
         Number of highly variable genes to select. Default: 2000.
     n_markers_per_type
         Number of marker genes per cell type. Default: 50.
+    spatial_method
+        Method for spatial graph construction: "knn" (k-nearest neighbors),
+        "radius" (fixed radius, requires ``radius``), or "grid" (auto-detect
+        grid structure). Default: "knn".
+    k_neighbors
+        Number of neighbors for KNN graph (used when spatial_method="knn").
+        Default: 6.
+    radius
+        Radius for spatial graph construction (required when
+        spatial_method="radius").
     preprocess
         Preprocessing method. Options: "log_cpm" (recommended for sparse data
         like Stereo-seq), "pearson" (Pearson residuals), "raw" (no preprocessing).
@@ -126,6 +139,9 @@ def deconvolve(
         rho_sparsity=rho_sparsity,
         n_hvg=n_hvg,
         n_markers_per_type=n_markers_per_type,
+        spatial_method=spatial_method,
+        k_neighbors=k_neighbors,
+        radius=radius,
         preprocess=preprocess,
         random_state=random_state,
         verbose=False,
@@ -142,6 +158,9 @@ def deconvolve(
         "rho_sparsity": rho_sparsity,
         "n_hvg": n_hvg,
         "n_markers_per_type": n_markers_per_type,
+        "spatial_method": spatial_method,
+        "k_neighbors": k_neighbors,
+        "radius": radius,
         "preprocess": preprocess,
         "n_genes_used": len(model.gene_idx_),
         "n_cell_types": len(cell_type_names),

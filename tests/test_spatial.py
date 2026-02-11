@@ -74,6 +74,18 @@ class TestRadiusGraph:
         n_neighbors_small = int(A_small[center_idx].sum())
         assert n_neighbors_small == 4
 
+    def test_include_self_no_neighbors(self):
+        """Test self-loops are added even when no neighbor pairs exist."""
+        # Points far apart, tiny radius -> no neighbor pairs
+        coords = np.array([[0.0, 0.0], [100.0, 100.0], [200.0, 200.0]])
+        A = build_radius_graph(coords, radius=0.01, include_self=True)
+
+        assert A.shape == (3, 3)
+        # Diagonal must be 1 (self-loops present)
+        np.testing.assert_array_equal(A.diagonal(), np.ones(3))
+        # Off-diagonal must be 0 (no neighbors)
+        assert A.nnz == 3
+
 
 class TestCoordsToAdjacency:
     """Tests for coords_to_adjacency function."""

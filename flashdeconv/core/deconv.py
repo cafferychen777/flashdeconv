@@ -46,10 +46,12 @@ class FlashDeconv:
     spatial_method : str, default="knn"
         Method for spatial graph construction:
         - "knn": k-nearest neighbors
-        - "radius": fixed radius
+        - "radius": fixed radius (requires ``radius`` parameter)
         - "grid": auto-detect grid structure
     k_neighbors : int, default=6
-        Number of neighbors for KNN graph.
+        Number of neighbors for KNN graph (used when spatial_method="knn").
+    radius : float, optional
+        Radius for spatial graph construction (required when spatial_method="radius").
     max_iter : int, default=100
         Maximum iterations for BCD solver.
     tol : float, default=1e-4
@@ -92,6 +94,7 @@ class FlashDeconv:
         n_markers_per_type: int = 50,
         spatial_method: str = "knn",
         k_neighbors: int = 6,
+        radius: Optional[float] = None,
         max_iter: int = 100,
         tol: float = 1e-4,
         preprocess: PreprocessMethod = "log_cpm",
@@ -115,6 +118,10 @@ class FlashDeconv:
             raise ValueError(f"n_hvg must be non-negative, got {n_hvg}")
         if n_markers_per_type < 0:
             raise ValueError(f"n_markers_per_type must be non-negative, got {n_markers_per_type}")
+        if spatial_method == "radius" and radius is None:
+            raise ValueError("radius must be specified when spatial_method='radius'")
+        if radius is not None and radius <= 0:
+            raise ValueError(f"radius must be positive, got {radius}")
 
         self.sketch_dim = sketch_dim
         self.lambda_spatial = lambda_spatial
@@ -123,6 +130,7 @@ class FlashDeconv:
         self.n_markers_per_type = n_markers_per_type
         self.spatial_method = spatial_method
         self.k_neighbors = k_neighbors
+        self.radius = radius
         self.max_iter = max_iter
         self.tol = tol
         self.preprocess = preprocess
@@ -329,6 +337,7 @@ class FlashDeconv:
             coords,
             method=self.spatial_method,
             k=self.k_neighbors,
+            radius=self.radius,
         )
         self.adjacency_ = A
 

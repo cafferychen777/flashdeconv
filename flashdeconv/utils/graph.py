@@ -115,7 +115,9 @@ def build_radius_graph(
     pairs = tree.query_pairs(r=radius, output_type='ndarray')
 
     if len(pairs) == 0:
-        # No neighbors found - return empty matrix
+        # No neighbors found
+        if include_self and n_spots > 0:
+            return sparse.eye(n_spots, dtype=np.float64, format="csr")
         return sparse.csr_matrix((n_spots, n_spots), dtype=np.float64)
 
     # Build symmetric adjacency

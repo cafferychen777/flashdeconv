@@ -398,5 +398,10 @@ def normalize_proportions(beta: np.ndarray) -> np.ndarray:
         Normalized proportions (sum to 1 per row).
     """
     row_sums = np.sum(beta, axis=1, keepdims=True)
+    zero_mask = (row_sums == 0).ravel()
     row_sums = np.maximum(row_sums, 1e-10)
-    return beta / row_sums
+    proportions = beta / row_sums
+    # All-zero rows get uniform distribution (maximum entropy)
+    if np.any(zero_mask):
+        proportions[zero_mask] = 1.0 / beta.shape[1]
+    return proportions
