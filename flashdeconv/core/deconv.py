@@ -225,8 +225,8 @@ class FlashDeconv:
             return Y_norm, X_norm
 
         elif method == "raw":
-            # No preprocessing
-            return Y.astype(float), X.astype(float)
+            # No preprocessing; cast to float only if needed (no copy)
+            return Y.astype(np.float64, copy=False), X.astype(np.float64, copy=False)
 
         else:
             raise ValueError(
