@@ -239,7 +239,6 @@ class FlashDeconv:
         Y: ArrayLike,
         X: np.ndarray,
         coords: np.ndarray,
-        gene_names: Optional[np.ndarray] = None,
         cell_type_names: Optional[np.ndarray] = None,
     ) -> "FlashDeconv":
         """
@@ -253,8 +252,6 @@ class FlashDeconv:
             Reference cell type signature matrix.
         coords : ndarray of shape (n_spots, 2) or (n_spots, 3)
             Spatial coordinates of spots.
-        gene_names : ndarray of shape (n_genes,), optional
-            Gene names for logging.
         cell_type_names : ndarray of shape (n_cell_types,), optional
             Cell type names.
 
@@ -319,7 +316,7 @@ class FlashDeconv:
         if self.verbose:
             print(f"Step 3: Sketching to {self.sketch_dim} dimensions...")
 
-        Y_sketch, X_sketch, Omega = sketch_data(
+        Y_sketch, X_sketch, _ = sketch_data(
             Y_tilde, X_tilde,
             sketch_dim=self.sketch_dim,
             leverage_scores=leverage_scores,

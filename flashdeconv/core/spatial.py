@@ -141,35 +141,6 @@ def compute_laplacian_quadratic(
     return np.sum(beta * Lbeta)
 
 
-def compute_neighbor_sum(
-    beta: np.ndarray,
-    neighbors: List[np.ndarray],
-) -> np.ndarray:
-    """
-    Compute sum of beta over neighbors for each spot.
-
-    Parameters
-    ----------
-    beta : ndarray of shape (n_spots, n_cell_types)
-        Cell type abundances.
-    neighbors : list of ndarray
-        Neighbor indices for each spot.
-
-    Returns
-    -------
-    neighbor_sums : ndarray of shape (n_spots, n_cell_types)
-        Sum of neighbor betas for each spot.
-    """
-    n_spots, n_cell_types = beta.shape
-    neighbor_sums = np.zeros((n_spots, n_cell_types), dtype=beta.dtype)
-
-    for i in range(n_spots):
-        if len(neighbors[i]) > 0:
-            neighbor_sums[i] = np.sum(beta[neighbors[i]], axis=0)
-
-    return neighbor_sums
-
-
 def auto_tune_lambda(
     Y_sketch: np.ndarray,
     X_sketch: np.ndarray,

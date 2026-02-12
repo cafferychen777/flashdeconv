@@ -123,7 +123,7 @@ def deconvolve(
     adata = adata_st.copy() if copy else adata_st
 
     # Prepare data using existing IO functions
-    Y, X, coords, cell_type_names, gene_names = prepare_data(
+    Y, X, coords, cell_type_names, _ = prepare_data(
         adata,
         adata_ref,
         cell_type_key=cell_type_key,

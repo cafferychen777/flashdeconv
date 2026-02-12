@@ -13,7 +13,6 @@ from flashdeconv.core.solver import (
     bcd_solve,
     normalize_proportions,
     compute_objective,
-    compute_objective_fast,
 )
 from flashdeconv.utils.graph import build_knn_graph
 from flashdeconv.core.spatial import compute_laplacian
@@ -205,7 +204,10 @@ class TestObjectiveFunction:
         A = build_knn_graph(coords, k=4)
         L = compute_laplacian(A)
 
-        obj = compute_objective(Y_sketch, X_sketch, beta, L, lambda_=0.1, rho=0.01)
+        H = precompute_XtY(X_sketch, Y_sketch)
+        XtX = precompute_gram_matrix(X_sketch)
+        YtY = float(np.sum(Y_sketch ** 2))
+        obj = compute_objective(beta, H, XtX, YtY, L, lambda_=0.1, rho=0.01)
 
         assert obj >= 0
 
@@ -225,7 +227,10 @@ class TestObjectiveFunction:
         L = compute_laplacian(A)
 
         # With perfect fit, fidelity term should be ~0
-        obj = compute_objective(Y_sketch, X_sketch, beta, L, lambda_=0.0, rho=0.0)
+        H = precompute_XtY(X_sketch, Y_sketch)
+        XtX = precompute_gram_matrix(X_sketch)
+        YtY = float(np.sum(Y_sketch ** 2))
+        obj = compute_objective(beta, H, XtX, YtY, L, lambda_=0.0, rho=0.0)
         np.testing.assert_allclose(obj, 0, atol=1e-10)
 
     def test_matches_algebraic_expansion(self):
@@ -258,17 +263,13 @@ class TestObjectiveFunction:
         sparsity = rho * np.sum(np.abs(beta))
         expected = fidelity + spatial + sparsity
 
-        obj_plain = compute_objective(Y_sketch, X_sketch, beta, L, lambda_=lambda_, rho=rho)
-        np.testing.assert_allclose(obj_plain, expected, rtol=1e-10, atol=1e-8)
-
-        # compute_objective_fast must agree with compute_objective
-        obj_fast = compute_objective_fast(
+        obj_fast = compute_objective(
             beta, H, XtX, YtY, L, lambda_=lambda_, rho=rho,
         )
-        np.testing.assert_allclose(obj_fast, obj_plain, rtol=1e-9, atol=1e-8)
+        np.testing.assert_allclose(obj_fast, expected, rtol=1e-9, atol=1e-8)
 
-    def test_fast_objective_multiple_scales(self):
-        """Test fast objective matches original across varying data scales."""
+    def test_objective_multiple_scales(self):
+        """Test objective matches algebraic expectation across varying data scales."""
         for seed, N, K, d in [(0, 50, 3, 20), (1, 200, 10, 64), (2, 30, 8, 128)]:
             np.random.seed(seed)
             Y = np.random.randn(N, d) * (seed + 1)
@@ -281,10 +282,17 @@ class TestObjectiveFunction:
             XtX = precompute_gram_matrix(X)
             YtY = float(np.sum(Y ** 2))
 
-            obj_orig = compute_objective(Y, X, beta, L, 0.1, 0.05)
-            obj_fast = compute_objective_fast(beta, H, XtX, YtY, L, 0.1, 0.05)
-            np.testing.assert_allclose(obj_fast, obj_orig, rtol=1e-9, atol=1e-8,
-                                       err_msg=f"Mismatch for seed={seed}")
+            cross = np.einsum("ki,ik->", H, beta)
+            BtB = beta.T @ beta
+            quad = np.einsum("ij,ij->", BtB, XtX)
+            fidelity = 0.5 * (YtY - 2.0 * cross + quad)
+            spatial = 0.1 * np.sum(beta * (L @ beta))
+            sparsity = 0.05 * np.sum(np.abs(beta))
+            expected = fidelity + spatial + sparsity
+            obj = compute_objective(beta, H, XtX, YtY, L, 0.1, 0.05)
+            np.testing.assert_allclose(
+                obj, expected, rtol=1e-9, atol=1e-8, err_msg=f"Mismatch for seed={seed}"
+            )
 
 
 class TestDeterminism:

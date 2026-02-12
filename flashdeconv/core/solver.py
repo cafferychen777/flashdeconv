@@ -224,47 +224,6 @@ def precompute_XtY(X_sketch: np.ndarray, Y_sketch: np.ndarray) -> np.ndarray:
 
 
 def compute_objective(
-    Y_sketch: np.ndarray,
-    X_sketch: np.ndarray,
-    beta: np.ndarray,
-    L: sparse.spmatrix,
-    lambda_: float,
-    rho: float,
-) -> float:
-    """
-    Compute the objective function value.
-
-    L(beta) = 0.5 * ||Y - beta @ X||_F^2 + lambda * Tr(beta^T L beta) + rho * ||beta||_1
-
-    Parameters
-    ----------
-    Y_sketch, X_sketch, beta : arrays
-        Data and solution.
-    L : sparse matrix
-        Graph Laplacian.
-    lambda_, rho : float
-        Regularization parameters.
-
-    Returns
-    -------
-    obj : float
-        Objective value.
-    """
-    # Fidelity term
-    residual = Y_sketch - beta @ X_sketch
-    fidelity = 0.5 * np.sum(residual ** 2)
-
-    # Spatial smoothing term
-    Lbeta = L @ beta
-    spatial = lambda_ * np.sum(beta * Lbeta)
-
-    # Sparsity term
-    sparsity = rho * np.sum(np.abs(beta))
-
-    return fidelity + spatial + sparsity
-
-
-def compute_objective_fast(
     beta: np.ndarray,
     H: np.ndarray,
     XtX: np.ndarray,
@@ -430,7 +389,7 @@ def bcd_solve(
         rel_change = max_diff / (max_abs_old + 1e-10)
 
         if verbose and (iteration % 10 == 0 or iteration == max_iter - 1):
-            obj = compute_objective_fast(
+            obj = compute_objective(
                 beta_b, H, XtX, YtY, L, lambda_, rho
             )
             objectives.append(obj)
@@ -446,7 +405,7 @@ def bcd_solve(
             break
 
     # After swap, beta_a always holds the latest result
-    final_obj = compute_objective_fast(
+    final_obj = compute_objective(
         beta_a, H, XtX, YtY, L, lambda_, rho
     )
 
