@@ -9,9 +9,11 @@ from scipy import sparse
 from flashdeconv.core.solver import (
     soft_threshold,
     precompute_gram_matrix,
+    precompute_XtY,
     bcd_solve,
     normalize_proportions,
     compute_objective,
+    compute_objective_fast,
 )
 from flashdeconv.utils.graph import build_knn_graph
 from flashdeconv.core.spatial import compute_laplacian
@@ -259,13 +261,30 @@ class TestObjectiveFunction:
         obj_plain = compute_objective(Y_sketch, X_sketch, beta, L, lambda_=lambda_, rho=rho)
         np.testing.assert_allclose(obj_plain, expected, rtol=1e-10, atol=1e-8)
 
-        # If the implementation supports the fast-path args, it must agree with the plain path.
-        sig = inspect.signature(compute_objective)
-        if "H" in sig.parameters and "XtX" in sig.parameters:
-            obj_fast = compute_objective(
-                Y_sketch, X_sketch, beta, L, lambda_=lambda_, rho=rho, H=H, XtX=XtX
-            )
-            np.testing.assert_allclose(obj_fast, obj_plain, rtol=1e-10, atol=1e-8)
+        # compute_objective_fast must agree with compute_objective
+        obj_fast = compute_objective_fast(
+            beta, H, XtX, YtY, L, lambda_=lambda_, rho=rho,
+        )
+        np.testing.assert_allclose(obj_fast, obj_plain, rtol=1e-9, atol=1e-8)
+
+    def test_fast_objective_multiple_scales(self):
+        """Test fast objective matches original across varying data scales."""
+        for seed, N, K, d in [(0, 50, 3, 20), (1, 200, 10, 64), (2, 30, 8, 128)]:
+            np.random.seed(seed)
+            Y = np.random.randn(N, d) * (seed + 1)
+            X = np.random.randn(K, d)
+            beta = np.abs(np.random.randn(N, K))
+            coords = np.random.rand(N, 2)
+            A = build_knn_graph(coords, k=4)
+            L = compute_laplacian(A)
+            H = precompute_XtY(X, Y)
+            XtX = precompute_gram_matrix(X)
+            YtY = float(np.sum(Y ** 2))
+
+            obj_orig = compute_objective(Y, X, beta, L, 0.1, 0.05)
+            obj_fast = compute_objective_fast(beta, H, XtX, YtY, L, 0.1, 0.05)
+            np.testing.assert_allclose(obj_fast, obj_orig, rtol=1e-9, atol=1e-8,
+                                       err_msg=f"Mismatch for seed={seed}")
 
 
 class TestDeterminism:

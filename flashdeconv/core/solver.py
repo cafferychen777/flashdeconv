@@ -67,11 +67,9 @@ def update_spot_with_Xty(
     """
     n_cell_types = beta_i.shape[0]
 
-    # Initialize maintained residual: r = XtX @ beta_i
-    r = np.zeros(n_cell_types)
-    for k in range(n_cell_types):
-        for j in range(n_cell_types):
-            r[k] += XtX[k, j] * beta_i[j]
+    # Initialize maintained residual with a dense matrix-vector product.
+    # This is equivalent to the nested loops below, but faster in numba.
+    r = XtX @ beta_i
 
     # Coordinate descent over cell types
     for k in range(n_cell_types):
@@ -104,19 +102,23 @@ def update_spot_with_Xty(
 
 
 @jit(nopython=True, parallel=True, cache=True)
-def bcd_iteration(
+def _bcd_iteration_fused(
     H: np.ndarray,
     XtX: np.ndarray,
-    beta: np.ndarray,
+    beta_in: np.ndarray,
+    beta_out: np.ndarray,
     neighbor_indices: np.ndarray,
     neighbor_indptr: np.ndarray,
     lambda_: float,
     rho: float,
-) -> np.ndarray:
+    spot_diffs: np.ndarray,
+    spot_abs: np.ndarray,
+) -> None:
     """
-    Single BCD iteration over all spots (parallelized).
+    Single BCD iteration with double-buffered I/O and fused convergence stats.
 
-    Uses precomputed H = X_sketch @ Y_sketch.T for efficiency.
+    Reads from beta_in, writes to beta_out, and computes per-spot max absolute
+    change (spot_diffs) and max absolute old value (spot_abs) in the same pass.
 
     Parameters
     ----------
@@ -124,8 +126,10 @@ def bcd_iteration(
         Precomputed X_sketch @ Y_sketch.T matrix.
     XtX : ndarray of shape (n_cell_types, n_cell_types)
         Precomputed Gram matrix.
-    beta : ndarray of shape (n_spots, n_cell_types)
-        Current cell type abundances.
+    beta_in : ndarray of shape (n_spots, n_cell_types)
+        Current (read-only) cell type abundances.
+    beta_out : ndarray of shape (n_spots, n_cell_types)
+        Output buffer for updated abundances.
     neighbor_indices : ndarray
         Flattened neighbor indices (CSR format).
     neighbor_indptr : ndarray
@@ -134,40 +138,50 @@ def bcd_iteration(
         Spatial regularization.
     rho : float
         Sparsity regularization.
-
-    Returns
-    -------
-    beta_new : ndarray of shape (n_spots, n_cell_types)
-        Updated abundances.
+    spot_diffs : ndarray of shape (n_spots,)
+        Output: per-spot max |beta_new - beta_old|.
+    spot_abs : ndarray of shape (n_spots,)
+        Output: per-spot max |beta_old|.
     """
-    n_spots = beta.shape[0]
-    n_cell_types = beta.shape[1]
-
-    beta_new = np.empty_like(beta)
+    n_spots = beta_in.shape[0]
+    n_cell_types = beta_in.shape[1]
 
     for i in prange(n_spots):
-        # Get precomputed X @ y_i from H matrix (O(K) lookup instead of O(K*d) computation)
         Xty_i = H[:, i]
-        beta_i = beta[i].copy()  # warm-start from old beta (read-only)
+
+        # Copy old values into output buffer (workspace for coordinate descent)
+        for k in range(n_cell_types):
+            beta_out[i, k] = beta_in[i, k]
 
         # Get neighbors
         start = neighbor_indptr[i]
         end = neighbor_indptr[i + 1]
         n_neighbors = end - start
 
-        # Compute neighbor sum
+        # Compute neighbor sum (reads from beta_in: Jacobi pattern)
         neighbor_sum = np.zeros(n_cell_types)
         for idx in range(start, end):
             j = neighbor_indices[idx]
             for k in range(n_cell_types):
-                neighbor_sum[k] += beta[j, k]
+                neighbor_sum[k] += beta_in[j, k]
 
-        # Update this spot
-        beta_new[i] = update_spot_with_Xty(
-            Xty_i, XtX, beta_i, neighbor_sum, n_neighbors, lambda_, rho
+        # Update this spot (modifies beta_out[i] in place via CD)
+        update_spot_with_Xty(
+            Xty_i, XtX, beta_out[i], neighbor_sum, n_neighbors, lambda_, rho
         )
 
-    return beta_new
+        # Fused convergence statistics
+        local_diff = 0.0
+        local_abs = 0.0
+        for k in range(n_cell_types):
+            d = abs(beta_out[i, k] - beta_in[i, k])
+            if d > local_diff:
+                local_diff = d
+            a = abs(beta_in[i, k])
+            if a > local_abs:
+                local_abs = a
+        spot_diffs[i] = local_diff
+        spot_abs[i] = local_abs
 
 
 def precompute_gram_matrix(X_sketch: np.ndarray) -> np.ndarray:
@@ -250,6 +264,59 @@ def compute_objective(
     return fidelity + spatial + sparsity
 
 
+def compute_objective_fast(
+    beta: np.ndarray,
+    H: np.ndarray,
+    XtX: np.ndarray,
+    YtY: float,
+    L: sparse.spmatrix,
+    lambda_: float,
+    rho: float,
+) -> float:
+    """
+    Compute objective using precomputed matrices (no N*d temporaries).
+
+    Uses the algebraic expansion:
+        0.5*||Y - bX||^2 = 0.5*(||Y||^2 - 2*Tr(Y^T b X) + Tr(b^T b X X^T))
+
+    Parameters
+    ----------
+    beta : ndarray of shape (n_spots, n_cell_types)
+        Current solution.
+    H : ndarray of shape (n_cell_types, n_spots)
+        Precomputed X @ Y^T.
+    XtX : ndarray of shape (n_cell_types, n_cell_types)
+        Precomputed X @ X^T (Gram matrix).
+    YtY : float
+        Precomputed ||Y||_F^2.
+    L : sparse matrix
+        Graph Laplacian.
+    lambda_, rho : float
+        Regularization parameters.
+
+    Returns
+    -------
+    obj : float
+        Objective value.
+    """
+    # Fidelity: 0.5*(YtY - 2*cross + quad) via precomputed matrices
+    # cross = Tr(Y^T beta X) = sum_{ik} beta_{ik} H_{ki}
+    cross = np.sum(beta * H.T)
+    # quad = ||beta X||_F^2 = Tr(beta^T beta @ XtX)
+    BtB = beta.T @ beta  # (K, K)
+    quad = np.sum(BtB * XtX)
+    fidelity = 0.5 * (YtY - 2.0 * cross + quad)
+
+    # Spatial smoothing term
+    Lbeta = L @ beta
+    spatial = lambda_ * np.sum(beta * Lbeta)
+
+    # Sparsity term
+    sparsity = rho * np.sum(np.abs(beta))
+
+    return fidelity + spatial + sparsity
+
+
 def bcd_solve(
     Y_sketch: np.ndarray,
     X_sketch: np.ndarray,
@@ -308,14 +375,10 @@ def bcd_solve(
         }
         return beta, info
 
-    # Initialize beta (uniform proportions)
-    beta = np.ones((n_spots, n_cell_types), dtype=np.float64) / n_cell_types
-
     # Precompute matrices for efficiency
-    # G = X @ X^T: Gram matrix (K x K)
-    XtX = precompute_gram_matrix(X_sketch)
-    # H = X @ Y^T: Avoids recomputing X @ y_i in each iteration (K x N)
-    H = precompute_XtY(X_sketch, Y_sketch)
+    XtX = precompute_gram_matrix(X_sketch)   # (K, K)
+    H = precompute_XtY(X_sketch, Y_sketch)   # (K, N)
+    YtY = float(np.sum(Y_sketch ** 2))       # scalar, for fast objective
 
     # Scale rho so that the user-facing parameter is a dimensionless fraction.
     # The partial residual r_ik ~ O(diag(G)); without scaling, rho ~ 0.01
@@ -338,6 +401,14 @@ def bcd_solve(
     from flashdeconv.core.spatial import compute_laplacian
     L = compute_laplacian(A)
 
+    # Double-buffered iteration: swap roles each iteration, zero allocation
+    beta_a = np.ones((n_spots, n_cell_types), dtype=np.float64) / n_cell_types
+    beta_b = np.empty_like(beta_a)
+
+    # Pre-allocate convergence stat buffers (N floats each, reused every iter)
+    spot_diffs = np.empty(n_spots, dtype=np.float64)
+    spot_abs = np.empty(n_spots, dtype=np.float64)
+
     # Track convergence
     objectives = []
     converged = False
@@ -345,23 +416,28 @@ def bcd_solve(
     rel_change = 0.0
 
     for iteration in range(max_iter):
-        beta_old = beta  # reference only; bcd_iteration does not mutate input
-
-        # BCD iteration (using precomputed H)
-        beta = bcd_iteration(
-            H, XtX, beta,
+        # BCD iteration: read beta_a, write beta_b, fuse convergence stats
+        _bcd_iteration_fused(
+            H, XtX, beta_a, beta_b,
             neighbor_indices, neighbor_indptr,
-            lambda_, rho
+            lambda_, rho,
+            spot_diffs, spot_abs,
         )
 
-        # Check convergence
-        change = np.max(np.abs(beta - beta_old))
-        rel_change = change / (np.max(np.abs(beta_old)) + 1e-10)
+        # Convergence from fused stats (no extra full-matrix scan)
+        max_diff = spot_diffs.max()
+        max_abs_old = spot_abs.max()
+        rel_change = max_diff / (max_abs_old + 1e-10)
 
         if verbose and (iteration % 10 == 0 or iteration == max_iter - 1):
-            obj = compute_objective(Y_sketch, X_sketch, beta, L, lambda_, rho)
+            obj = compute_objective_fast(
+                beta_b, H, XtX, YtY, L, lambda_, rho
+            )
             objectives.append(obj)
             print(f"Iteration {iteration}: objective = {obj:.6f}, rel_change = {rel_change:.6e}")
+
+        # Swap buffers (pointer swap, zero copy)
+        beta_a, beta_b = beta_b, beta_a
 
         if rel_change < tol:
             converged = True
@@ -369,8 +445,10 @@ def bcd_solve(
                 print(f"Converged at iteration {iteration}")
             break
 
-    # Final objective
-    final_obj = compute_objective(Y_sketch, X_sketch, beta, L, lambda_, rho)
+    # After swap, beta_a always holds the latest result
+    final_obj = compute_objective_fast(
+        beta_a, H, XtX, YtY, L, lambda_, rho
+    )
 
     info = {
         'converged': converged,
@@ -380,7 +458,7 @@ def bcd_solve(
         'final_change': rel_change,
     }
 
-    return beta, info
+    return beta_a, info
 
 
 def normalize_proportions(beta: np.ndarray) -> np.ndarray:
