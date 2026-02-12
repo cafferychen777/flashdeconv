@@ -328,6 +328,21 @@ class TestDeconvolveScanpyAPI:
         assert params["spatial_method"] == "radius"
         assert params["radius"] == 3.0
 
+    def test_deconvolve_memory_saving_output(self, adata_pair):
+        """Test that deconvolve stores proportions in obsm and not duplicated obs columns."""
+        from flashdeconv.tl import deconvolve
+
+        adata_st, adata_ref = adata_pair
+
+        deconvolve(adata_st, adata_ref, sketch_dim=32, key_added="fd")
+        assert "fd" in adata_st.obsm
+        assert "fd_dominant" in adata_st.obs
+        assert str(adata_st.obs["fd_dominant"].dtype) == "category"
+        assert not any(c.startswith("fd_type_") for c in adata_st.obs.columns)
+        params = adata_st.uns["fd_params"]
+        assert "store_cell_type_obs" not in params
+        assert "store_dominant_obs" not in params
+
 
 class TestResultToAnndata:
     """Test result_to_anndata edge cases."""
@@ -344,7 +359,9 @@ class TestResultToAnndata:
         result_to_anndata(beta, adata, cell_type_names=None)
 
         assert "flashdeconv" in adata.obsm
-        assert f"flashdeconv_dominant" in adata.obs
+        assert "flashdeconv_dominant" in adata.obs
+        assert str(adata.obs["flashdeconv_dominant"].dtype) == "category"
+        assert not any(col.startswith("flashdeconv_CellType_") for col in adata.obs.columns)
         # Dominant should be one of the auto-generated names
         assert all(v.startswith("CellType_") for v in adata.obs["flashdeconv_dominant"])
 
@@ -361,8 +378,8 @@ class TestResultToAnndata:
         result_to_anndata(beta, adata, cell_type_names=names)
 
         assert "flashdeconv" in adata.obsm
+        assert all(f"flashdeconv_{name}" not in adata.obs for name in names)
         assert set(adata.obs["flashdeconv_dominant"].unique()).issubset(set(names))
-
 
 class TestFlashDeconvErrors:
     """Test error handling."""
@@ -374,14 +391,32 @@ class TestFlashDeconvErrors:
         with pytest.raises(RuntimeError, match="not been fitted"):
             model.get_cell_type_proportions()
 
-    def test_dimension_mismatch(self):
-        """Test error with mismatched dimensions."""
-        Y = np.random.rand(50, 100)  # 100 genes
-        X = np.random.rand(5, 200)   # 200 genes (mismatch!)
+    def test_gene_dimension_mismatch(self):
+        """Test clear error when Y and X have different gene counts."""
+        Y = np.random.rand(50, 100)
+        X = np.random.rand(5, 200)
         coords = np.random.rand(50, 2)
 
         model = FlashDeconv(sketch_dim=32, max_iter=10)
+        with pytest.raises(ValueError, match="Gene dimension mismatch"):
+            model.fit(Y, X, coords)
 
-        # This should raise an error due to gene dimension mismatch
-        with pytest.raises(Exception):
+    def test_coords_spot_mismatch(self):
+        """Test clear error when coords rows != Y rows (was a segfault)."""
+        Y = np.random.rand(100, 200)
+        X = np.random.rand(5, 200)
+        coords = np.random.rand(50, 2)  # 50 != 100
+
+        model = FlashDeconv(sketch_dim=32, max_iter=10, preprocess="raw")
+        with pytest.raises(ValueError, match="Spot count mismatch"):
+            model.fit(Y, X, coords)
+
+    def test_empty_reference_cell_types(self):
+        """Test clear error when reference has zero cell types."""
+        Y = np.random.rand(20, 100)
+        X = np.zeros((0, 100))
+        coords = np.random.rand(20, 2)
+
+        model = FlashDeconv(sketch_dim=32, max_iter=10)
+        with pytest.raises(ValueError, match="at least one cell type"):
             model.fit(Y, X, coords)

@@ -7,7 +7,7 @@ which encourages neighboring spots to have similar cell type compositions.
 
 import numpy as np
 from scipy import sparse
-from typing import Union, Optional, Tuple, List
+from typing import Union, List
 
 ArrayLike = Union[np.ndarray, sparse.spmatrix]
 

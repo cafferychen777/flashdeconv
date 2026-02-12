@@ -11,7 +11,7 @@ Optimizations:
 
 import numpy as np
 from numba import jit, prange
-from typing import Optional, Tuple, List
+from typing import Tuple
 from scipy import sparse
 
 

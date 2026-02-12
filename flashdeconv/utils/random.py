@@ -7,7 +7,7 @@ global state.
 """
 
 import numpy as np
-from typing import Union, Optional
+from typing import Union
 
 # Type alias for random state parameter
 RandomStateLike = Union[None, int, np.random.RandomState]

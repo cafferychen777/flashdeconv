@@ -221,11 +221,24 @@ def result_to_anndata(
     """
     import pandas as pd
 
+    if beta.ndim != 2:
+        raise ValueError(f"beta must be 2D, got shape {beta.shape}")
+    if beta.shape[0] != adata.n_obs:
+        raise ValueError(
+            f"beta rows must match adata.n_obs, got beta.shape[0]={beta.shape[0]} "
+            f"and adata.n_obs={adata.n_obs}"
+        )
+
     # Create DataFrame with results
     if cell_type_names is not None:
         columns = np.asarray(cell_type_names)
     else:
         columns = np.array([f"CellType_{i}" for i in range(beta.shape[1])])
+    if len(columns) != beta.shape[1]:
+        raise ValueError(
+            f"Length of cell_type_names ({len(columns)}) must match "
+            f"beta.shape[1] ({beta.shape[1]})"
+        )
 
     df = pd.DataFrame(
         beta,
@@ -236,12 +249,11 @@ def result_to_anndata(
     # Store in obsm
     adata.obsm[key_added] = df
 
-    # Also store proportions in obs for easy access
-    for col in columns:
-        adata.obs[f"{key_added}_{col}"] = df[col].values
-
-    # Store dominant cell type
-    adata.obs[f"{key_added}_dominant"] = columns[np.argmax(beta, axis=1)]
+    # Store dominant cell type as categorical to minimize memory footprint.
+    # Per-cell-type obs columns are intentionally not materialized to avoid
+    # duplicating the same matrix already stored in obsm[key_added].
+    dominant = columns[np.argmax(beta, axis=1)]
+    adata.obs[f"{key_added}_dominant"] = pd.Categorical(dominant, categories=columns)
 
     return adata
 

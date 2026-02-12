@@ -2,8 +2,6 @@
 
 from typing import Union, Optional, Any
 
-import numpy as np
-
 
 def deconvolve(
     adata_st: Any,
@@ -92,7 +90,6 @@ def deconvolve(
     Adds fields to ``adata_st``:
 
     - ``.obsm['{key_added}']`` : DataFrame of cell type proportions (n_spots x n_types)
-    - ``.obs['{key_added}_{celltype}']`` : Proportion column for each cell type
     - ``.obs['{key_added}_dominant']`` : Dominant cell type per spot
     - ``.uns['{key_added}_params']`` : Parameters used for deconvolution
 
@@ -110,7 +107,6 @@ def deconvolve(
     Visualize with scanpy:
 
     >>> sc.pl.spatial(adata_st, color='flashdeconv_dominant')
-    >>> sc.pl.spatial(adata_st, color=['flashdeconv_Neuron', 'flashdeconv_Astrocyte'])
 
     Use deconvolution for downstream clustering:
 
@@ -149,7 +145,12 @@ def deconvolve(
     proportions = model.fit_transform(Y, X, coords, cell_type_names=cell_type_names)
 
     # Store results using existing IO function
-    result_to_anndata(proportions, adata, cell_type_names, key_added=key_added)
+    result_to_anndata(
+        proportions,
+        adata,
+        cell_type_names,
+        key_added=key_added,
+    )
 
     # Store parameters as metadata
     adata.uns[f"{key_added}_params"] = {

@@ -266,6 +266,31 @@ class FlashDeconv:
         from flashdeconv.utils.genes import select_informative_genes
         from flashdeconv.utils.graph import coords_to_adjacency
 
+        # --- Input validation (prevent segfaults and cryptic errors) ---
+        if Y.shape[1] != X.shape[1]:
+            raise ValueError(
+                f"Gene dimension mismatch: Y has {Y.shape[1]} genes but "
+                f"X has {X.shape[1]} genes. They must share the same gene "
+                f"space (align before calling fit)."
+            )
+        if coords.shape[0] != Y.shape[0]:
+            raise ValueError(
+                f"Spot count mismatch: Y has {Y.shape[0]} spots but "
+                f"coords has {coords.shape[0]} rows. Each spot needs "
+                f"exactly one coordinate."
+            )
+        if X.shape[0] == 0:
+            raise ValueError(
+                "Reference matrix X must contain at least one cell type "
+                "(X.shape[0] > 0). Check your reference filtering and "
+                "cell_type_key mapping."
+            )
+        if cell_type_names is not None and len(cell_type_names) != X.shape[0]:
+            raise ValueError(
+                f"cell_type_names length ({len(cell_type_names)}) does not "
+                f"match number of cell types in X ({X.shape[0]})."
+            )
+
         if self.verbose:
             print("FlashDeconv: Starting deconvolution...")
             print(f"  Spatial data: {Y.shape[0]} spots x {Y.shape[1]} genes")

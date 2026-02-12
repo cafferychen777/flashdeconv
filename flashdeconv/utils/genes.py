@@ -10,7 +10,7 @@ This module implements feature selection for structure-preserving sketching:
 import numpy as np
 from scipy import sparse
 from scipy.sparse import diags
-from typing import Union, Optional, Tuple, List
+from typing import Union, Tuple
 
 ArrayLike = Union[np.ndarray, sparse.spmatrix]
 

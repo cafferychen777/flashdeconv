@@ -1,8 +1,6 @@
 """Tests for sketching module."""
 
 import numpy as np
-import pytest
-from scipy import sparse
 
 from flashdeconv.core.sketching import (
     build_countsketch_matrix,

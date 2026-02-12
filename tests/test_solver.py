@@ -1,10 +1,8 @@
 """Tests for BCD solver module."""
 
 import hashlib
-import inspect
 import numpy as np
 import pytest
-from scipy import sparse
 
 from flashdeconv.core.solver import (
     soft_threshold,
@@ -120,7 +118,6 @@ class TestBCDSolver:
     def test_objective_decreases(self, simple_problem):
         """Test objective function decreases (approximately)."""
         Y_sketch, X_sketch, A, _ = simple_problem
-        L = compute_laplacian(A)
 
         # Run with verbose to get objectives
         beta, info = bcd_solve(

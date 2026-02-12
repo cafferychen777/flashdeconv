@@ -1,7 +1,6 @@
 """Tests for spatial graph and Laplacian modules."""
 
 import numpy as np
-import pytest
 from scipy import sparse
 
 from flashdeconv.utils.graph import (

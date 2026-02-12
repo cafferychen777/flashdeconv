@@ -8,7 +8,7 @@ graphs from spot coordinates.
 import numpy as np
 from scipy import sparse
 from scipy.spatial import cKDTree
-from typing import Union, Optional, Tuple, Literal
+from typing import Union, Optional, Literal
 
 ArrayLike = Union[np.ndarray, sparse.spmatrix]
 
@@ -210,66 +210,3 @@ def coords_to_adjacency(
         return build_grid_graph(coords)
     else:
         raise ValueError(f"Unknown method: {method}")
-
-
-def estimate_optimal_k(
-    coords: np.ndarray,
-    min_k: int = 4,
-    max_k: int = 20,
-) -> int:
-    """
-    Estimate optimal k for KNN graph based on local density.
-
-    Parameters
-    ----------
-    coords : ndarray of shape (n_spots, 2)
-        Spatial coordinates.
-    min_k : int, default=4
-        Minimum k value.
-    max_k : int, default=20
-        Maximum k value.
-
-    Returns
-    -------
-    k : int
-        Estimated optimal k.
-    """
-    n_spots = coords.shape[0]
-
-    # Parameter validation
-    if min_k < 0:
-        raise ValueError(f"min_k must be non-negative, got {min_k}")
-    if max_k < min_k:
-        raise ValueError(f"max_k must be >= min_k, got max_k={max_k} < min_k={min_k}")
-
-    # Cannot have neighbors with fewer than 2 points
-    if n_spots <= 1:
-        return 0
-
-    # Clamp to valid range: k can never exceed n_spots-1
-    upper_bound = n_spots - 1
-    max_k_eff = min(max_k, upper_bound)
-    min_k_eff = min(min_k, upper_bound)
-
-    # For small datasets, use smaller k
-    if n_spots < 100:
-        return min_k_eff
-
-    # Estimate based on local density variation
-    tree = cKDTree(coords)
-    distances, _ = tree.query(coords, k=max_k_eff + 1)
-
-    # Find k where distance growth stabilizes
-    mean_distances = np.mean(distances, axis=0)[1:]  # Exclude self
-
-    # Look for "elbow" in distance growth
-    growth_rates = np.diff(mean_distances)
-    normalized_growth = growth_rates / (mean_distances[:-1] + 1e-10)
-
-    # Find where growth rate drops significantly
-    threshold = np.median(normalized_growth) * 0.5
-    stable_k = np.argmax(normalized_growth < threshold) + 1
-
-    k = max(min_k_eff, min(stable_k + min_k_eff, max_k_eff))
-
-    return k
