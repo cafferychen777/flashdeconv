@@ -237,6 +237,14 @@ def compute_objective(
 
     Uses the algebraic expansion:
         0.5*||Y - bX||^2 = 0.5*(||Y||^2 - 2*Tr(Y^T b X) + Tr(b^T b X X^T))
+    and the convention:
+        objective = fidelity + 0.5*lambda*Tr(beta^T L beta) + rho*||beta||_1
+
+    Note
+    ----
+    The 0.5 factor on the Laplacian term keeps this objective consistent with
+    the coordinate-update formula used by ``bcd_solve`` (which applies
+    ``lambda`` directly in the per-coordinate denominator and neighbor term).
 
     Parameters
     ----------
@@ -266,9 +274,9 @@ def compute_objective(
     quad = np.sum(BtB * XtX)
     fidelity = 0.5 * (YtY - 2.0 * cross + quad)
 
-    # Spatial smoothing term
+    # Spatial smoothing term (0.5 * lambda * Tr(beta^T L beta))
     Lbeta = L @ beta
-    spatial = lambda_ * np.sum(beta * Lbeta)
+    spatial = 0.5 * lambda_ * np.sum(beta * Lbeta)
 
     # Sparsity term
     sparsity = rho * np.sum(np.abs(beta))
@@ -290,7 +298,7 @@ def bcd_solve(
     Solve the spatial-regularized deconvolution problem via BCD.
 
     Minimize:
-    0.5 * ||Y_sketch - beta @ X_sketch||_F^2 + lambda * Tr(beta^T L beta) + rho * ||beta||_1
+    0.5 * ||Y_sketch - beta @ X_sketch||_F^2 + 0.5 * lambda * Tr(beta^T L beta) + rho * ||beta||_1
     subject to: beta >= 0
 
     Parameters

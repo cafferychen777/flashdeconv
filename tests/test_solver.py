@@ -256,7 +256,7 @@ class TestObjectiveFunction:
         fidelity = 0.5 * (YtY - 2.0 * cross + quad)
 
         Lbeta = L @ beta
-        spatial = lambda_ * np.sum(beta * Lbeta)
+        spatial = 0.5 * lambda_ * np.sum(beta * Lbeta)
         sparsity = rho * np.sum(np.abs(beta))
         expected = fidelity + spatial + sparsity
 
@@ -283,7 +283,7 @@ class TestObjectiveFunction:
             BtB = beta.T @ beta
             quad = np.einsum("ij,ij->", BtB, XtX)
             fidelity = 0.5 * (YtY - 2.0 * cross + quad)
-            spatial = 0.1 * np.sum(beta * (L @ beta))
+            spatial = 0.5 * 0.1 * np.sum(beta * (L @ beta))
             sparsity = 0.05 * np.sum(np.abs(beta))
             expected = fidelity + spatial + sparsity
             obj = compute_objective(beta, H, XtX, YtY, L, 0.1, 0.05)

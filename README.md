@@ -85,7 +85,7 @@ Performance varies by tissue type and experimental conditions. We recommend eval
 FlashDeconv solves a graph-regularized non-negative least squares problem:
 
 ```
-minimize  ½‖Y - βX‖²_F + λ·Tr(βᵀLβ) + ρ‖β‖₁,  subject to β ≥ 0
+minimize  ½‖Y - βX‖²_F + ½λ·Tr(βᵀLβ) + ρ‖β‖₁,  subject to β ≥ 0
 ```
 
 where Y is spatial expression, X is reference signatures, L is the graph Laplacian, and β represents cell type abundances.
@@ -94,7 +94,7 @@ where Y is spatial expression, X is reference signatures, L is the graph Laplaci
 
 **Pipeline:**
 1. Select informative genes (HVG ∪ markers) and compute leverage scores
-2. Compress gene space via weighted CountSketch (G → 512 dimensions)
+2. Compress gene space via CountSketch with uniform hashing + leverage-weighted amplitudes (G → 512 dimensions)
 3. Construct sparse k-NN spatial graph
 4. Solve via block coordinate descent with spatial smoothing
 
