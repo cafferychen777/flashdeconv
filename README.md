@@ -40,6 +40,8 @@ fd.tl.deconvolve(adata_st, adata_ref, cell_type_key="cell_type")
 sc.pl.spatial(adata_st, color="flashdeconv_Hepatocyte")
 ```
 
+FlashDeconv is also available as a tool in [ChatSpatial](https://github.com/cafferychen777/ChatSpatial), an MCP server for spatial transcriptomics — run deconvolution through natural language from any compatible client.
+
 ---
 
 ## Overview
