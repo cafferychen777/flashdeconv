@@ -1,6 +1,6 @@
-numpy>=1.21
+numpy>=1.21,<2.4
 scipy>=1.7
-numba>=0.56
+numba>=0.56,<0.62
 
 # Optional: for AnnData I/O support
 # anndata>=0.8

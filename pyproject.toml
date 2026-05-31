@@ -29,11 +29,11 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.9,<3.13"
 dependencies = [
-    "numpy>=1.21",
+    "numpy>=1.21,<2.4",
     "scipy>=1.7",
-    "numba>=0.56",
+    "numba>=0.56,<0.62",
 ]
 
 [project.optional-dependencies]
