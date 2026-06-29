@@ -417,12 +417,18 @@ def bcd_solve(
         beta_a, H, XtX, YtY, L, lambda_, rho
     )
 
+    # Per-spot neighbor counts for uncertainty estimation
+    n_neighbors_arr = np.diff(neighbor_indptr).astype(np.float64)
+
     info = {
         'converged': converged,
         'n_iterations': iteration + 1,
         'final_objective': final_obj,
         'objectives': objectives if verbose else [],
         'final_change': rel_change,
+        # Expose for uncertainty quantification (zero-copy references)
+        'XtX': XtX,
+        'n_neighbors': n_neighbors_arr,
     }
 
     return beta_a, info

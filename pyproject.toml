@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "flashdeconv"
@@ -61,9 +61,8 @@ Documentation = "https://github.com/cafferychen777/flashdeconv"
 Repository = "https://github.com/cafferychen777/flashdeconv"
 Paper = "https://doi.org/10.64898/2025.12.22.696108"
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["flashdeconv*"]
+[tool.hatch.build.targets.wheel]
+packages = ["flashdeconv"]
 
 [tool.black]
 line-length = 100

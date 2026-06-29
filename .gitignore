@@ -32,11 +32,41 @@ ENV/
 *.swp
 *.swo
 
-# Playwright MCP
+# Local agent/browser automation state
+.claude/
+.playwright-cli/
 .playwright-mcp/
 
 # Jupyter
 .ipynb_checkpoints/
+
+# pytest
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# type checkers / linters
+.mypy_cache/
+.ruff_cache/
+
+# matplotlib cache
+.mplcache/
+
+# numba cache
+.numba_cache/
+
+# LaTeX auxiliary files
+*.aux
+*.fdb_latexmk
+*.fls
+*.bbl
+*.blg
+*.out
+*.synctex.gz
+*.toc
+*.lof
+*.lot
 
 # Data files (large)
 *.h5ad
@@ -58,12 +88,22 @@ CARD_repo/
 # Development notes (keep locally, don't commit)
 docs/*
 !docs/reference_data_guide.md
+!docs/stereo_seq_guide.md
 CLAUDE.md
 
 # Reproducibility materials (moved to separate repo)
 validation/
 paper/
 data/
+
+# Promotion materials (submissions, social media, emails)
+promotion/
+
+# Local analysis scripts and results
+analysis/
+
+# Review materials
+resolution_horizon_review/
 
 # Figures - keep article figures, ignore others
 figures/*

@@ -13,6 +13,6 @@ authors:
 doi: "10.64898/2025.12.22.696108"
 url: "https://doi.org/10.64898/2025.12.22.696108"
 repository-code: "https://github.com/cafferychen777/flashdeconv"
-license: GPL-3.0
+license: BSD-3-Clause
 year: 2025
 journal: "bioRxiv"

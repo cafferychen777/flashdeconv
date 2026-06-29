@@ -397,6 +397,15 @@ class FlashDeconv:
         self.info_ = info
         self._fitted = True
 
+        # Store sketch-space data for uncertainty quantification
+        self.Y_sketch_ = Y_sketch
+        self.X_sketch_ = X_sketch
+        self.lambda_used_ = lambda_
+        # Store original data references for bootstrap
+        self._Y_raw = Y
+        self._X_raw = X
+        self._leverage_scores = leverage_scores
+
         if self.verbose:
             print(f"  Converged: {info['converged']}")
             print(f"  Iterations: {info['n_iterations']}")
@@ -502,6 +511,131 @@ class FlashDeconv:
             "n_iterations": self.info_["n_iterations"],
             "final_objective": self.info_["final_objective"],
         }
+
+    def compute_uncertainty(self, alpha: float = 0.05) -> Dict[str, Any]:
+        """
+        Compute analytical uncertainty estimates (Tier 0 + Tier 1).
+
+        Tier 0: Prediction entropy and reconstruction residual.
+        Tier 1: Hessian-diagonal Laplace approximation for per-type
+                confidence intervals via delta method.
+
+        Parameters
+        ----------
+        alpha : float, default=0.05
+            Significance level for confidence intervals (0.05 = 95% CI).
+
+        Returns
+        -------
+        uq : dict with keys:
+            'entropy': ndarray (n_spots,)
+            'residual_norm': ndarray (n_spots,)
+            'var_prop': ndarray (n_spots, n_cell_types)
+            'ci_lower': ndarray (n_spots, n_cell_types)
+            'ci_upper': ndarray (n_spots, n_cell_types)
+            'ci_half_width': ndarray (n_spots, n_cell_types)
+            'cv': ndarray (n_spots, n_cell_types)
+            'detection_confident': ndarray (n_spots, n_cell_types) bool
+            'mean_ci_width': float - average CI width across all entries
+        """
+        if not self._fitted:
+            raise RuntimeError("Model has not been fitted. Call fit() first.")
+
+        from .uncertainty import (
+            compute_entropy,
+            compute_reconstruction_residual,
+            compute_hessian_variance,
+            compute_confidence_scores,
+        )
+
+        # Tier 0: entropy and residual
+        entropy = compute_entropy(self.proportions_)
+        residual_ss, residual_norm = compute_reconstruction_residual(
+            self.Y_sketch_, self.X_sketch_, self.beta_,
+        )
+
+        # Tier 1: Hessian-diagonal variance
+        XtX = self.info_['XtX']
+        n_neighbors = self.info_['n_neighbors']
+        sketch_dim = self.Y_sketch_.shape[1]
+
+        _, var_prop = compute_hessian_variance(
+            self.beta_, XtX, residual_ss, sketch_dim,
+            self.lambda_used_, n_neighbors,
+        )
+
+        # Confidence scores
+        conf = compute_confidence_scores(self.proportions_, var_prop, alpha)
+
+        uq = {
+            'entropy': entropy,
+            'residual_ss': residual_ss,
+            'residual_norm': residual_norm,
+            'var_prop': var_prop,
+            'mean_ci_width': float(np.mean(conf['ci_upper'] - conf['ci_lower'])),
+            **conf,
+        }
+
+        self.uncertainty_ = uq
+        return uq
+
+    def bootstrap_uncertainty(
+        self,
+        n_bootstrap: int = 100,
+        max_iter_boot: int = 20,
+        seed: int = 42,
+        verbose: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Poisson parametric bootstrap for empirical confidence intervals.
+
+        For each replicate, resamples Y ~ Poisson(Y_observed), re-sketches,
+        and re-solves with warm start from the converged solution.
+
+        Parameters
+        ----------
+        n_bootstrap : int, default=100
+            Number of bootstrap replicates.
+        max_iter_boot : int, default=20
+            Max BCD iterations per bootstrap (warm start converges fast).
+        seed : int, default=42
+        verbose : bool
+
+        Returns
+        -------
+        boot : dict with keys:
+            'boot_mean', 'boot_std', 'boot_ci_lower', 'boot_ci_upper',
+            'boot_cv', 'n_bootstrap'
+        """
+        if not self._fitted:
+            raise RuntimeError("Model has not been fitted. Call fit() first.")
+
+        from .uncertainty import poisson_bootstrap
+
+        model_params = {
+            'gene_idx': self.gene_idx_,
+            'sketch_dim': self.sketch_dim,
+            'preprocess': self.preprocess,
+            'lambda_': self.lambda_used_,
+            'rho': self.rho_sparsity,
+            'leverage_scores': self._leverage_scores,
+            'random_state': self.random_state,
+            'adjacency': self.adjacency_,
+        }
+
+        boot = poisson_bootstrap(
+            self._Y_raw, self._X_raw,
+            coords=None,  # not needed — adjacency already stored
+            model_params=model_params,
+            beta_init=self.beta_,
+            n_bootstrap=n_bootstrap,
+            max_iter_boot=max_iter_boot,
+            seed=seed,
+            verbose=verbose,
+        )
+
+        self.bootstrap_ = boot
+        return boot
 
     def __repr__(self) -> str:
         status = "fitted" if self._fitted else "not fitted"
