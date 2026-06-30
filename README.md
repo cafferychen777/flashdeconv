@@ -38,7 +38,7 @@ adata_ref = sc.read_h5ad("reference.h5ad")
 fd.tl.deconvolve(adata_st, adata_ref, cell_type_key="cell_type")
 
 # Results stored in adata_st.obsm["flashdeconv"]
-sc.pl.spatial(adata_st, color="flashdeconv_Hepatocyte")
+sc.pl.spatial(adata_st, color="flashdeconv_dominant")
 ```
 
 FlashDeconv is also available as a tool in [ChatSpatial](https://github.com/cafferychen777/ChatSpatial), an MCP server for spatial transcriptomics — run deconvolution through natural language from any compatible client.
@@ -215,7 +215,7 @@ Fit and return cell type proportions. Same parameters as `fit()`. Returns ndarra
 
 **`compute_uncertainty(alpha=0.05)`**
 
-Analytical uncertainty via Hessian-diagonal Laplace approximation. Returns dict with keys: `entropy`, `residual_norm`, `var_prop`, `ci_lower`, `ci_upper`, `ci_half_width`, `cv`, `detection_confident`, `mean_ci_width`.
+Analytical uncertainty via Hessian-diagonal Laplace approximation. Returns dict with keys: `entropy`, `residual_ss`, `residual_norm`, `var_prop`, `ci_lower`, `ci_upper`, `ci_half_width`, `cv`, `detection_confident`, `mean_ci_width`.
 
 **`bootstrap_uncertainty(n_bootstrap=100, max_iter_boot=20, seed=42, verbose=False)`**
 

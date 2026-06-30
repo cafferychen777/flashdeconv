@@ -529,6 +529,7 @@ class FlashDeconv:
         -------
         uq : dict with keys:
             'entropy': ndarray (n_spots,)
+            'residual_ss': ndarray (n_spots,)
             'residual_norm': ndarray (n_spots,)
             'var_prop': ndarray (n_spots, n_cell_types)
             'ci_lower': ndarray (n_spots, n_cell_types)
