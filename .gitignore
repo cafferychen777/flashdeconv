@@ -87,6 +87,7 @@ CARD_repo/
 
 # Development notes (keep locally, don't commit)
 docs/*
+!docs/api_reference.md
 !docs/reference_data_guide.md
 !docs/stereo_seq_guide.md
 CLAUDE.md
