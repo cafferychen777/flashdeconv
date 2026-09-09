@@ -93,7 +93,7 @@ minimize  ½‖Y - βX‖²_F + ½λ·Tr(βᵀLβ) + ρ‖β‖₁,  subject to 
 
 where Y is spatial expression, X is reference signatures, L is the graph Laplacian, and β represents cell type abundances.
 
-![FlashDeconv Framework](https://raw.githubusercontent.com/cafferychen777/flashdeconv/main/figures/figure1.jpeg)
+[![FlashDeconv framework](paper/figures/figure1.svg)](paper/figures/figure1.pdf)
 
 **Pipeline:**
 1. Select informative genes (HVG ∪ markers) and compute leverage scores

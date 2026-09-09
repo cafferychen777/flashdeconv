@@ -93,7 +93,11 @@ CLAUDE.md
 
 # Reproducibility materials (moved to separate repo)
 validation/
-paper/
+paper/*
+!paper/figures/
+paper/figures/*
+!paper/figures/figure1.svg
+!paper/figures/figure1.pdf
 data/
 
 # Promotion materials (submissions, social media, emails)
@@ -107,7 +111,6 @@ resolution_horizon_review/
 
 # Figures - keep article figures, ignore others
 figures/*
-!figures/figure1.jpeg
 !figures/figure2_mechanism.png
 !figures/figure_visium_hd.png
 !figures/figure7_tuft_discovery.png
