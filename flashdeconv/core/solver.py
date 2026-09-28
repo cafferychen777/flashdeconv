@@ -2,17 +2,26 @@
 Block Coordinate Descent solver for FlashDeconv.
 
 This module implements a Numba-accelerated BCD algorithm for solving
-the spatial-regularized non-negative least squares problem.
+the spatial-regularized non-negative least squares problem. Arguments named
+``*_sketch`` hold data in the solver's gene representation: the weighted
+selected genes (default) or the legacy CountSketch projection.
+
+Each iteration updates every spot from the previous iterate of its
+neighbours (Jacobi across spots, Gauss-Seidel across cell types within a
+spot), so the result does not depend on the thread schedule.
 
 Optimizations:
 - Precompute Gram matrix G = X @ X^T (avoids O(K*K*d) per iteration)
 - Precompute H = X @ Y^T (avoids O(T*N*K*d) recomputation across iterations)
 """
 
+from typing import Optional, Tuple
+
 import numpy as np
 from numba import jit, prange
-from typing import Tuple
 from scipy import sparse
+
+from flashdeconv.core.spatial import compute_laplacian
 
 
 @jit(nopython=True, cache=True)
@@ -190,7 +199,7 @@ def precompute_gram_matrix(X_sketch: np.ndarray) -> np.ndarray:
 
     Parameters
     ----------
-    X_sketch : ndarray of shape (n_cell_types, sketch_dim)
+    X_sketch : ndarray of shape (n_cell_types, p)
         Sketched reference.
 
     Returns
@@ -210,9 +219,9 @@ def precompute_XtY(X_sketch: np.ndarray, Y_sketch: np.ndarray) -> np.ndarray:
 
     Parameters
     ----------
-    X_sketch : ndarray of shape (n_cell_types, sketch_dim)
+    X_sketch : ndarray of shape (n_cell_types, p)
         Sketched reference signatures.
-    Y_sketch : ndarray of shape (n_spots, sketch_dim)
+    Y_sketch : ndarray of shape (n_spots, p)
         Sketched spatial data.
 
     Returns
@@ -290,9 +299,10 @@ def bcd_solve(
     A: sparse.spmatrix,
     lambda_: float = 0.1,
     rho: float = 0.01,
-    max_iter: int = 100,
+    max_iter: int = 1000,
     tol: float = 1e-4,
     verbose: bool = False,
+    beta_init: Optional[np.ndarray] = None,
 ) -> Tuple[np.ndarray, dict]:
     """
     Solve the spatial-regularized deconvolution problem via BCD.
@@ -303,22 +313,27 @@ def bcd_solve(
 
     Parameters
     ----------
-    Y_sketch : ndarray of shape (n_spots, sketch_dim)
-        Sketched spatial data.
-    X_sketch : ndarray of shape (n_cell_types, sketch_dim)
-        Sketched reference signatures.
+    Y_sketch : ndarray or sparse matrix of shape (n_spots, p)
+        Spatial data in the gene representation (p = sketch_dim for the
+        CountSketch projection, p = number of selected genes for the
+        weighted-gene representation). Sparse input is not densified.
+    X_sketch : ndarray of shape (n_cell_types, p)
+        Reference signatures in the same representation.
     A : sparse matrix of shape (n_spots, n_spots)
         Spatial adjacency matrix.
     lambda_ : float, default=0.1
         Spatial regularization strength.
     rho : float, default=0.01
         Sparsity regularization strength (L1).
-    max_iter : int, default=100
+    max_iter : int, default=1000
         Maximum number of iterations.
     tol : float, default=1e-4
         Convergence tolerance (relative change in beta).
     verbose : bool, default=False
         Whether to print progress.
+    beta_init : ndarray of shape (n_spots, n_cell_types), optional
+        Starting point (warm start). Negative entries are clipped to 0.
+        Default: uniform start ``1 / n_cell_types``.
 
     Returns
     -------
@@ -327,7 +342,7 @@ def bcd_solve(
     info : dict
         Optimization information including convergence status.
     """
-    n_spots, sketch_dim = Y_sketch.shape
+    n_spots = Y_sketch.shape[0]
     n_cell_types = X_sketch.shape[0]
 
     # Handle empty input
@@ -344,8 +359,13 @@ def bcd_solve(
 
     # Precompute matrices for efficiency
     XtX = precompute_gram_matrix(X_sketch)   # (K, K)
-    H = precompute_XtY(X_sketch, Y_sketch)   # (K, N)
-    YtY = float(np.sum(Y_sketch ** 2))       # scalar, for fast objective
+    if sparse.issparse(Y_sketch):
+        # Sparse gene-space representation: never densify Y.
+        H = np.ascontiguousarray(np.asarray((Y_sketch @ X_sketch.T).T))
+        YtY = float(Y_sketch.multiply(Y_sketch).sum())
+    else:
+        H = precompute_XtY(X_sketch, Y_sketch)   # (K, N)
+        YtY = float(np.sum(Y_sketch ** 2))       # scalar, for fast objective
 
     # Scale rho so that the user-facing parameter is a dimensionless fraction.
     # The partial residual r_ik ~ O(diag(G)); without scaling, rho ~ 0.01
@@ -364,12 +384,19 @@ def bcd_solve(
     neighbor_indices = A_csr.indices.astype(np.int64)
     neighbor_indptr = A_csr.indptr.astype(np.int64)
 
-    # Compute Laplacian for objective
-    from flashdeconv.core.spatial import compute_laplacian
+    # Laplacian for the objective value
     L = compute_laplacian(A)
 
     # Double-buffered iteration: swap roles each iteration, zero allocation
-    beta_a = np.ones((n_spots, n_cell_types), dtype=np.float64) / n_cell_types
+    if beta_init is None:
+        beta_a = np.ones((n_spots, n_cell_types), dtype=np.float64) / n_cell_types
+    else:
+        if beta_init.shape != (n_spots, n_cell_types):
+            raise ValueError(
+                f"beta_init has shape {beta_init.shape}, expected "
+                f"{(n_spots, n_cell_types)}"
+            )
+        beta_a = np.maximum(np.array(beta_init, dtype=np.float64), 0.0)
     beta_b = np.empty_like(beta_a)
 
     # Pre-allocate convergence stat buffers (N floats each, reused every iter)

@@ -2,10 +2,12 @@
 FlashDeconv: Fast Linear Algebra for Scalable Hybrid Deconvolution
 
 A high-performance spatial transcriptomics deconvolution method that combines:
-- Variance-stabilizing transformation with platform effect correction
-- Structure-preserving randomized sketching
+- Log-normalization of spatial and reference expression
+- Structure-preserving gene representation (deterministic expected
+  leverage-weighted CountSketch weights; randomized CountSketch as legacy option)
 - Spatial graph Laplacian regularization
 - Numba-accelerated Block Coordinate Descent solver
+- Diagnostics for cell types missing from the reference
 
 Example
 -------
@@ -22,10 +24,22 @@ NumPy API (for more control):
 >>> proportions = model.fit_transform(Y, X, coords)
 """
 
-__version__ = "0.1.6"
+__version__ = "0.2.0"
 __author__ = "FlashDeconv Team"
 
 from flashdeconv.core.deconv import FlashDeconv
+from flashdeconv.core.refcheck import (
+    reference_fit_scores,
+    suggest_missing_types,
+    unexplained_genes,
+)
 from flashdeconv import tl
 
-__all__ = ["FlashDeconv", "tl", "__version__"]
+__all__ = [
+    "FlashDeconv",
+    "tl",
+    "reference_fit_scores",
+    "unexplained_genes",
+    "suggest_missing_types",
+    "__version__",
+]

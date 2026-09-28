@@ -150,18 +150,20 @@ def auto_tune_lambda(
     """
     Auto-tune spatial regularization parameter lambda.
 
-    The key insight is that lambda must be scaled relative to XtX to have
-    any effect on the optimization. In the BCD update:
+    lambda is set relative to the Gram matrix XtX of the representation, so
+    that the result is invariant to a global rescaling of the gene weights.
+    In the BCD update:
         denom = XtX[k,k] + lambda * n_neighbors
     For lambda to contribute meaningfully, we need:
         lambda * n_neighbors ~ alpha * XtX[k,k]
 
     Parameters
     ----------
-    Y_sketch : ndarray of shape (n_spots, sketch_dim)
-        Sketched spatial data.
-    X_sketch : ndarray of shape (n_cell_types, sketch_dim)
-        Sketched reference.
+    Y_sketch : array-like of shape (n_spots, p)
+        Spatial data in the solver's gene representation (unused; kept for
+        API compatibility).
+    X_sketch : ndarray of shape (n_cell_types, p)
+        Reference in the solver's gene representation.
     A : sparse matrix of shape (n_spots, n_spots)
         Adjacency matrix.
     alpha : float, default=0.005

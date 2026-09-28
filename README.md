@@ -3,7 +3,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/flashdeconv.svg)](https://pypi.org/project/flashdeconv/)
 [![Tests](https://github.com/cafferychen777/flashdeconv/actions/workflows/test.yml/badge.svg)](https://github.com/cafferychen777/flashdeconv/actions/workflows/test.yml)
 [![License](https://img.shields.io/badge/License-BSD_3--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
-[![Python 3.9–3.12](https://img.shields.io/badge/python-3.9%20%E2%80%93%203.12-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.9–3.14](https://img.shields.io/badge/python-3.9%20%E2%80%93%203.14-blue.svg)](https://www.python.org/downloads/)
 [![DOI](https://zenodo.org/badge/1114934837.svg)](https://doi.org/10.5281/zenodo.18109003)
 
 **Estimate spatial cell-type proportions at atlas scale.**
@@ -20,7 +20,7 @@ FlashDeconv estimates cell type proportions from spatial transcriptomics data (V
 pip install "flashdeconv[io,scanpy]"
 ```
 
-Requires Python 3.9–3.12. This installs the dependencies used in the Quick Start below. For development or additional I/O support, see [Installation Options](#installation-options).
+Requires Python 3.9–3.14. This installs the dependencies used in the Quick Start below. For development or additional I/O support, see [Installation Options](#installation-options).
 
 ---
 
@@ -55,21 +55,21 @@ FlashDeconv is also available as a tool in [ChatSpatial](https://github.com/caff
 [![FlashDeconv framework](paper/figures/figure1.svg)](paper/figures/figure1.pdf)
 
 1. Select the union of spatial highly variable genes and reference markers; derive leverage scores from the reference signatures.
-2. Apply the selected preprocessing (log-CPM by default) and a shared weighted CountSketch to spatial and reference expression. Hashing is uniform, with random signs and leverage-weighted amplitudes; the default sketch dimension is 512.
+2. Apply the selected preprocessing (by default `log1p` of expression normalized to 10,000 counts per spot or cell type) and a shared deterministic leverage-weighted gene representation to spatial and reference expression: each selected gene is scaled by its exact expected weight in a column-normalized leverage-weighted CountSketch with `sketch_dim` buckets (default 512), averaged analytically over the random bucket assignment. No random projection is drawn, so results do not depend on `random_state`. The previous randomized CountSketch projection (uniform hashing, random signs, leverage-weighted amplitudes) remains available with `gene_weighting="countsketch"`.
 3. Construct a sparse spatial neighbor graph and fit non-negative regression coefficients with spatial smoothing and an L1 penalty.
 4. Normalize each coefficient row to obtain estimated cell-type proportions.
 
-The regression operates on the sketched matrices:
+The regression operates on the weighted (or, in legacy mode, sketched) matrices:
 
 ```text
 minimize  ½‖Y_s − βX_s‖²_F + ½λ Tr(βᵀLβ) + ρ_eff‖β‖₁,  subject to β ≥ 0
 ```
 
-Here `Y_s` is N × d, `X_s` is K × d, and `L = D − A` is the spatial graph Laplacian. The solver scales the user parameter as `ρ_eff = rho_sparsity × mean(diag(X_s X_sᵀ))`.
+Here `Y_s` is N × p and `X_s` is K × p, with p the number of selected genes (p = `sketch_dim` in legacy mode), and `L = D − A` is the spatial graph Laplacian. The solver scales the user parameter as `ρ_eff = rho_sparsity × mean(diag(X_s X_sᵀ))`.
 
 `beta_` contains regression coefficients, not absolute cell counts. `proportions_` contains their row-normalized values, `P[i, k] = β[i, k] / sum(β[i, :])`. An all-zero coefficient row is assigned a uniform distribution as a numerical fallback, not evidence of equal biological composition.
 
-With fixed gene count, sketch dimension, cell-type count, iteration count, and bounded graph degree, the regression stage has linear time and memory scaling in the number of spots. End-to-end runtime also includes preprocessing and neighbor search; it is not an unconditional O(N) guarantee. Radius graphs can become dense when many spots fall within the radius.
+With fixed gene count, cell-type count, iteration count, and bounded graph degree, the regression stage has linear time and memory scaling in the number of spots. End-to-end runtime also includes preprocessing and neighbor search; it is not an unconditional O(N) guarantee. Radius graphs can become dense when many spots fall within the radius.
 
 ---
 
@@ -103,7 +103,7 @@ See the [Quick Start](#quick-start) for the AnnData interface and the [full API 
 
 ### NumPy
 
-Provide spatial counts `Y` (N × G), reference signatures `X` (K × G), and coordinates `coords` (N × 2 or N × 3). The columns of `Y` and `X` must contain the same genes in the same order.
+Provide spatial counts `Y` (N × G, dense or SciPy sparse), reference signatures `X` (K × G), and coordinates `coords` (N × 2 or N × 3). The columns of `Y` and `X` must contain the same genes in the same order, and both must be non-negative and finite.
 
 ```python
 from flashdeconv import FlashDeconv
@@ -122,7 +122,8 @@ proportions = model.fit_transform(Y, X, coords)
 
 | Parameter | Default | Description |
 |:----------|:--------|:------------|
-| `sketch_dim` | 512 | Sketch dimension |
+| `gene_weighting` | "expected" | Gene representation: "expected" (deterministic expected leverage-weighted CountSketch weights) or "countsketch" (legacy randomized projection) |
+| `sketch_dim` | 512 | CountSketch bucket count d (sets the expected weights; projection dimension in legacy mode) |
 | `lambda_spatial` | "auto" | Spatial regularization, automatically scaled by default |
 | `rho_sparsity` | 0.01 | L1 sparsity penalty (dimensionless fraction) |
 | `n_hvg` | 2000 | Highly variable genes |
@@ -130,8 +131,10 @@ proportions = model.fit_transform(Y, X, coords)
 | `spatial_method` | "knn" | Graph method: "knn", "radius", or "grid" |
 | `k_neighbors` | 6 | Spatial graph neighbors (for "knn") |
 | `radius` | None | Neighbor radius (required for "radius") |
-| `preprocess` | "log_cpm" | Normalization: "log_cpm", "pearson", or "raw" |
-| `random_state` | 0 | Random seed for reproducibility |
+| `max_iter` | 1000 | Maximum solver iterations |
+| `tol` | 1e-4 | Convergence tolerance (relative change of the coefficients) |
+| `preprocess` | "log_cpm" | Normalization: "log_cpm" (log1p of counts per 10,000), "pearson", or "raw" |
+| `random_state` | 0 | Random seed for the legacy CountSketch projection (unused by the default) |
 
 ### Output
 
@@ -158,7 +161,7 @@ proportions = model.fit_transform(Y, X, coords)
 - Inspect highly correlated signatures and consider a coarser annotation when subtypes cannot be distinguished reliably.
 - Review labels such as `Unknown` or `Unassigned` before aggregation. A heterogeneous pool can produce an ambiguous signature, but the label alone is not a reason to discard a coherent population.
 - Spatial smoothing can blur sharp boundaries. Compare smoothing strengths when boundaries or rare populations are central to the analysis.
-- Estimated proportions depend on reference quality and preprocessing; they are not direct measurements of cell numbers. Available uncertainty methods are approximations and do not account for every source of reference or model uncertainty.
+- Estimated proportions depend on reference quality and preprocessing; they are not direct measurements of cell numbers. The opt-in uncertainty estimates (`compute_uncertainty`, `bootstrap_uncertainty`) are model-based: they reflect sampling uncertainty under the fitted model and exclude reference–tissue mismatch, missing cell types and model misspecification, which usually dominate the error. Use them to compare estimate stability across spots and types, not as calibrated intervals for true proportions.
 
 ---
 
@@ -176,7 +179,7 @@ git clone https://github.com/cafferychen777/flashdeconv.git
 cd flashdeconv && pip install -e ".[dev]"
 ```
 
-**Requirements:** Python 3.9–3.12, numpy, scipy, numba. Optional: scanpy, anndata.
+**Requirements:** Python 3.9–3.14, numpy, scipy, numba. Optional: scanpy, anndata.
 
 ---
 

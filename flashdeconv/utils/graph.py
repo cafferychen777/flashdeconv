@@ -59,19 +59,21 @@ def build_knn_graph(
     # Build KD-tree for efficient neighbor search
     tree = cKDTree(coords)
 
-    # Query k_actual+1 neighbors (includes self)
-    distances, indices = tree.query(coords, k=k_actual + 1)
+    # Query k_actual+1 neighbors (normally including the spot itself)
+    _, indices = tree.query(coords, k=k_actual + 1)
 
-    # Build adjacency matrix (vectorized)
-    # indices has shape (n_spots, k_actual+1), includes self
-    row_idx = np.repeat(np.arange(n_spots), k_actual + 1)
-    col_idx = indices.ravel()
+    spot_idx = np.arange(n_spots)
+    keep = indices != spot_idx[:, None]  # drop self
+    # With more than k_actual exact duplicates of a spot's coordinates, the
+    # query can return k_actual+1 other spots and not the spot itself; drop
+    # the farthest one so that every spot keeps exactly k_actual neighbors.
+    keep[keep.all(axis=1), -1] = False
 
-    if not include_self:
-        # Remove self-loops
-        mask = row_idx != col_idx
-        row_idx = row_idx[mask]
-        col_idx = col_idx[mask]
+    row_idx = np.repeat(spot_idx, k_actual)
+    col_idx = indices[keep]
+    if include_self:
+        row_idx = np.concatenate([row_idx, spot_idx])
+        col_idx = np.concatenate([col_idx, spot_idx])
 
     data = np.ones(len(row_idx), dtype=np.float64)
     A = sparse.csr_matrix((data, (row_idx, col_idx)), shape=(n_spots, n_spots))

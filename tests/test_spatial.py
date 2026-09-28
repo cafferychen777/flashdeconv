@@ -163,7 +163,7 @@ class TestNeighborHelpers:
         neighbors = get_neighbor_indices(A)
 
         assert len(neighbors) == 20
-        for i, nb in enumerate(neighbors):
+        for nb in neighbors:
             assert isinstance(nb, np.ndarray)
 
     def test_neighbor_counts(self):

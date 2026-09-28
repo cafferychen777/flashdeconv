@@ -1,10 +1,10 @@
 """
 Gene selection utilities for FlashDeconv.
 
-This module implements feature selection for structure-preserving sketching:
-- Highly variable gene (HVG) selection
-- Cell-type specific marker gene identification
-- Leverage score computation for importance weighting
+This module selects the genes used by the regression and scores them:
+- Highly variable gene (HVG) selection on the spatial data
+- Cell-type specific marker gene identification on the reference
+- Leverage scores of the reference, which set the gene weights
 """
 
 import numpy as np
@@ -23,11 +23,17 @@ def select_hvg(
     min_disp: float = 0.5,
 ) -> np.ndarray:
     """
-    Select highly variable genes using the Seurat v3 method.
+    Select highly variable genes by binned, standardized variance.
 
-    Supports both sparse and dense input matrices. For sparse matrices,
-    operations are performed without converting to dense, preserving
-    memory efficiency. Key insight: log1p(0) = 0, so sparsity is preserved.
+    Counts are normalized to 10,000 per spot and log1p-transformed; the
+    per-gene variance is standardized (z-score) within 20 bins of the mean
+    expression (quantile bins over genes with positive mean). Genes with
+    mean in ``[min_mean, max_mean]`` and standardized variance
+    ``>= min_disp`` are ranked by standardized variance; if fewer than
+    ``n_top`` genes pass, the top ``n_top`` genes by standardized variance
+    are taken without the filters.
+
+    Sparse input is processed without densification (``log1p(0) = 0``).
 
     Parameters
     ----------
@@ -40,7 +46,7 @@ def select_hvg(
     max_mean : float, default=3.0
         Maximum mean expression.
     min_disp : float, default=0.5
-        Minimum dispersion.
+        Minimum standardized variance.
 
     Returns
     -------
@@ -297,7 +303,7 @@ def select_informative_genes(
     n_markers_per_type: int = 50,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Select informative genes for sketching.
+    Select the genes used for deconvolution.
 
     Combines highly variable genes from spatial data with
     cell-type specific markers from reference.

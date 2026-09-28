@@ -1,117 +1,65 @@
-# Python
+# This repository contains the FlashDeconv package: source, tests, docs,
+# examples and the README figure. Everything else is local research workspace.
+
+# --- Python build and cache artifacts ---
 __pycache__/
 *.py[cod]
-*$py.class
 *.so
-.Python
 build/
-develop-eggs/
 dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
 *.egg-info/
-flashdeconv.egg-info/
-.installed.cfg
-*.egg
+.eggs/
 
-# Virtual environment
+# --- Virtual environments ---
 .venv/
 venv/
-ENV/
 
-# IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# Local agent/browser automation state
-.claude/
-.playwright-cli/
-.playwright-mcp/
-
-# Jupyter
-.ipynb_checkpoints/
-
-# pytest
+# --- Test, lint and JIT caches ---
 .pytest_cache/
 .coverage
 coverage.xml
 htmlcov/
-
-# type checkers / linters
 .mypy_cache/
 .ruff_cache/
-
-# matplotlib cache
-.mplcache/
-
-# numba cache
 .numba_cache/
+.mplcache/
+.ipynb_checkpoints/
 
-# LaTeX auxiliary files
-*.aux
-*.fdb_latexmk
-*.fls
-*.bbl
-*.blg
-*.out
-*.synctex.gz
-*.toc
-*.lof
-*.lot
-
-# Data files (large)
-*.h5ad
-*.h5
-*.pkl
-*.pickle
-
-# Results (can be regenerated)
-validation/results/
-
-# OS
+# --- Editors, OS and logs ---
+.idea/
+.vscode/
+*.swp
 .DS_Store
 Thumbs.db
-
-# Logs
 *.log
-CARD_repo/
 
-# Development notes (keep locally, don't commit)
-docs/*
-!docs/api_reference.md
-!docs/reference_data_guide.md
-!docs/stereo_seq_guide.md
+# --- Local assistant and automation state ---
+.claude/
+.playwright-cli/
+.playwright-mcp/
 CLAUDE.md
+AGENTS.md
 
-# Reproducibility materials (moved to separate repo)
-validation/
+# --- Research workspace (manuscript, analyses, data, results) ---
 paper/*
 !paper/figures/
 paper/figures/*
 !paper/figures/figure1.svg
 !paper/figures/figure1.pdf
+validation/
+analysis/
+results/
 data/
-
-# Promotion materials (submissions, social media, emails)
 promotion/
 
-# Local analysis scripts and results
-analysis/
+# --- Large data files anywhere ---
+*.h5ad
+*.h5
+*.pkl
+*.pickle
 
-# Review materials
-resolution_horizon_review/
-
-# Figures - keep article figures, ignore others
-figures/*
-!figures/figure2_mechanism.png
-!figures/figure_visium_hd.png
-!figures/figure7_tuft_discovery.png
+# --- Local development notes (only user-facing guides are tracked) ---
+docs/*
+!docs/api_reference.md
+!docs/reference_data_guide.md
+!docs/stereo_seq_guide.md

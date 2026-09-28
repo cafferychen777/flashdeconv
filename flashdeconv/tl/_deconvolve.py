@@ -16,12 +16,15 @@ def deconvolve(
     spatial_method: str = "knn",
     k_neighbors: int = 6,
     radius: Optional[float] = None,
+    max_iter: int = 1000,
+    tol: float = 1e-4,
     preprocess: str = "log_cpm",
     layer_st: Optional[str] = None,
     layer_ref: Optional[str] = None,
     spatial_key: str = "spatial",
     key_added: str = "flashdeconv",
     random_state: int = 0,
+    gene_weighting: str = "expected",
     copy: bool = False,
 ) -> Optional[Any]:
     """
@@ -39,8 +42,9 @@ def deconvolve(
     cell_type_key
         Column in ``adata_ref.obs`` containing cell type annotations.
     sketch_dim
-        Dimension of the sketched space. Higher values preserve more information
-        but increase computation. Default: 512.
+        Number of CountSketch buckets d. With ``gene_weighting="expected"`` it
+        sets the expected per-gene weights; with ``"countsketch"`` it is the
+        dimension of the randomized sketch space. Default: 512.
     lambda_spatial
         Spatial regularization strength. Use ``"auto"`` for automatic tuning.
         Higher values encourage spatially smooth cell type distributions.
@@ -64,9 +68,15 @@ def deconvolve(
     radius
         Radius for spatial graph construction (required when
         spatial_method="radius").
+    max_iter
+        Maximum iterations of the BCD solver. Default: 1000.
+    tol
+        Convergence tolerance (relative change of the abundances).
+        Default: 1e-4.
     preprocess
-        Preprocessing method. Options: "log_cpm" (recommended for sparse data
-        like Stereo-seq), "pearson" (Pearson residuals), "raw" (no preprocessing).
+        Preprocessing method: "log_cpm" (log1p of counts normalized to
+        10,000 per spot / cell type; recommended for count data), "pearson"
+        (uncentered Pearson residuals) or "raw" (no preprocessing).
         Default: "log_cpm".
     layer_st
         Layer in ``adata_st`` to use for counts. Uses ``.X`` if None.
@@ -77,8 +87,13 @@ def deconvolve(
     key_added
         Key under which results are stored. Default: "flashdeconv".
     random_state
-        Random seed for reproducibility. Default is 0, following scanpy convention
-        to ensure reproducible results out of the box.
+        Random seed for the legacy CountSketch projection. Default is 0,
+        following scanpy convention. Not used by the deterministic default
+        ``gene_weighting="expected"``.
+    gene_weighting
+        Gene representation: "expected" (default; selected genes scaled by the
+        exact expected leverage-weighted CountSketch weights, deterministic) or
+        "countsketch" (legacy randomized CountSketch projection).
     copy
         If True, return a copy instead of modifying ``adata_st`` in-place.
 
@@ -138,9 +153,12 @@ def deconvolve(
         spatial_method=spatial_method,
         k_neighbors=k_neighbors,
         radius=radius,
+        max_iter=max_iter,
+        tol=tol,
         preprocess=preprocess,
         random_state=random_state,
         verbose=False,
+        gene_weighting=gene_weighting,
     )
     proportions = model.fit_transform(Y, X, coords, cell_type_names=cell_type_names)
 
@@ -162,11 +180,14 @@ def deconvolve(
         "spatial_method": spatial_method,
         "k_neighbors": k_neighbors,
         "radius": radius,
+        "max_iter": max_iter,
+        "tol": tol,
         "preprocess": preprocess,
         "n_genes_used": len(model.gene_idx_),
         "n_cell_types": len(cell_type_names),
         "cell_type_names": list(cell_type_names),
         "random_state": random_state,
+        "gene_weighting": gene_weighting,
         "converged": model.info_.get("converged", False),
         "n_iterations": model.info_.get("n_iterations", 0),
     }

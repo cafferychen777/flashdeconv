@@ -107,11 +107,22 @@ def load_reference(
 
     is_sparse = sparse.issparse(expr)
 
+    if method not in ("mean", "sum"):
+        raise ValueError(f"Unknown aggregation method: {method!r} (use 'mean' or 'sum')")
+
     # Get cell type labels
     if cell_type_key not in adata_ref.obs:
         raise ValueError(f"Cell type key '{cell_type_key}' not found in adata_ref.obs")
+    labels = adata_ref.obs[cell_type_key]
+    n_missing = int(labels.isna().sum())
+    if n_missing:
+        raise ValueError(
+            f"{n_missing} cells have no '{cell_type_key}' label; remove them "
+            f"before building the reference, e.g. "
+            f"adata_ref[adata_ref.obs['{cell_type_key}'].notna()]."
+        )
 
-    cell_types = np.array(adata_ref.obs[cell_type_key])
+    cell_types = np.array(labels)
     unique_types = np.unique(cell_types)
     n_cell_types = len(unique_types)
     n_genes = expr.shape[1]
@@ -127,13 +138,11 @@ def load_reference(
                 X[i] = np.asarray(subset.mean(axis=0)).ravel()
             else:
                 X[i] = np.mean(subset, axis=0)
-        elif method == "sum":
+        else:
             if is_sparse:
                 X[i] = np.asarray(subset.sum(axis=0)).ravel()
             else:
                 X[i] = np.sum(subset, axis=0)
-        else:
-            raise ValueError(f"Unknown aggregation method: {method}")
 
     gene_names = np.array(adata_ref.var_names)
 

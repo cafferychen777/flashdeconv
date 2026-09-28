@@ -1,9 +1,14 @@
 """
-Structure-preserving randomized sketching for FlashDeconv.
+Structure-preserving gene representations for FlashDeconv.
 
-This module implements the dimensionality reduction via sparse
-CountSketch matrices with leverage-based amplitude scaling to preserve
-signals from rare cell types.
+This module implements two gene-space representations:
+
+- Expected leverage-weighted CountSketch weights (default). Each selected
+  gene is kept (no projection) and scaled by the exact expectation, over the
+  random bucket assignment, of its weight in the column-normalized
+  leverage-weighted CountSketch. The result is deterministic.
+- The randomized leverage-weighted CountSketch projection (legacy), which
+  hashes genes into ``sketch_dim`` buckets with random signs.
 """
 
 import numpy as np
@@ -82,6 +87,133 @@ def build_countsketch_matrix(
     Omega = Omega.multiply(scale / col_norms)
 
     return Omega.tocsr()
+
+
+def expected_countsketch_weights(
+    leverage_scores: Optional[np.ndarray],
+    n_genes: int,
+    sketch_dim: int = 512,
+    n_quad: int = 3000,
+    max_block_elements: int = 2 ** 24,
+) -> np.ndarray:
+    """
+    Exact expected per-gene weight of the leverage-weighted CountSketch.
+
+    In :func:`build_countsketch_matrix`, gene ``j`` receives the amplitude
+    ``a_j = clip(sqrt(g * l_j), 0.1, 10)`` (``l_j`` the normalized leverage,
+    ``g`` the number of genes) and is hashed to one of ``d`` buckets; each
+    bucket (column) is then normalized to unit norm. The absolute weight of
+    gene ``j`` is therefore ``a_j / sqrt(a_j^2 + S_j)``, where
+    ``S_j = sum_{i != j} a_i^2 B_i`` and ``B_i ~ Bernoulli(1/d)`` indicates
+    that gene ``i`` shares the bucket of gene ``j``. This function returns
+    its exact expectation under random hashing (the global
+    ``sqrt(g / d)`` factor is omitted; it does not change the solution with
+    automatic ``lambda_spatial``):
+
+        w_j = a_j * pi^(-1/2) * int_0^inf t^(-1/2) exp(-t a_j^2)
+              * prod_{i != j} [1 - (1 - exp(-t a_i^2)) / d] dt,
+
+    using ``x^(-1/2) = pi^(-1/2) int_0^inf t^(-1/2) exp(-t x) dt``. The
+    integral is evaluated with the trapezoid rule in ``log t`` on
+    ``n_quad`` log-spaced nodes in ``[1e-7, 1e5]``; the product is computed
+    in log space. The result is deterministic (no hashing).
+
+    Parameters
+    ----------
+    leverage_scores : ndarray of shape (n_genes,) or None
+        Gene leverage scores (normalized internally). Uniform if None.
+    n_genes : int
+        Number of genes g.
+    sketch_dim : int, default=512
+        Number of CountSketch buckets d.
+    n_quad : int, default=3000
+        Number of quadrature nodes.
+    max_block_elements : int, default=2**24
+        Maximum size of the (genes x nodes) work array; larger problems are
+        processed in blocks of quadrature nodes to bound memory.
+
+    Returns
+    -------
+    weights : ndarray of shape (n_genes,)
+        Positive, finite per-gene weights.
+    """
+    if sketch_dim <= 0:
+        raise ValueError(f"sketch_dim must be positive, got {sketch_dim}")
+    if leverage_scores is None:
+        p = np.ones(n_genes) / n_genes
+    else:
+        leverage_scores = np.asarray(leverage_scores, dtype=np.float64)
+        if leverage_scores.shape != (n_genes,):
+            raise ValueError(
+                f"leverage_scores must have shape ({n_genes},), "
+                f"got {leverage_scores.shape}"
+            )
+        p = leverage_scores / (np.sum(leverage_scores) + 1e-10)
+    if n_genes == 0:
+        return np.empty(0, dtype=np.float64)
+    a2 = np.clip(np.sqrt(p * n_genes + 1e-10), 0.1, 10.0) ** 2
+
+    if sketch_dim == 1:
+        # Every gene shares the single bucket: the weight is deterministic.
+        return np.sqrt(a2) / np.sqrt(np.sum(a2))
+
+    lt = np.linspace(np.log(1e-7), np.log(1e5), n_quad)
+    t = np.exp(lt)
+    trapz = getattr(np, "trapezoid", getattr(np, "trapz", None))
+
+    def _integrand(tb):
+        # log of the per-gene factor 1 - (1 - exp(-t a_i^2)) / d
+        neg = -np.outer(a2, tb)
+        logf = np.log1p(-(1.0 - np.exp(neg)) / sketch_dim)
+        tot = logf.sum(axis=0)
+        # t^(1/2) accounts for t^(-1/2) dt = t^(1/2) d(log t); the product
+        # over i != j is exp(tot - logf_j).
+        return np.sqrt(tb)[None, :] * np.exp(neg + tot[None, :] - logf)
+
+    block = max(2, int(max_block_elements // max(n_genes, 1)))
+    if block >= n_quad:
+        val = trapz(_integrand(t), lt, axis=1)
+    else:
+        # Trapezoid over consecutive node blocks sharing their end nodes.
+        val = np.zeros(n_genes, dtype=np.float64)
+        start = 0
+        while start < n_quad - 1:
+            stop = min(start + block, n_quad)
+            val += trapz(_integrand(t[start:stop]), lt[start:stop], axis=1)
+            start = stop - 1
+    return np.sqrt(a2) * (val / np.sqrt(np.pi))
+
+
+def apply_gene_weights(
+    Y_tilde: Union[np.ndarray, sparse.spmatrix],
+    X_tilde: np.ndarray,
+    weights: np.ndarray,
+) -> Tuple[Union[np.ndarray, sparse.csr_matrix], np.ndarray]:
+    """
+    Scale each gene column of Y_tilde and X_tilde by its weight.
+
+    Parameters
+    ----------
+    Y_tilde : array-like of shape (n_spots, n_genes)
+        Transformed spatial data (sparse or dense).
+    X_tilde : ndarray of shape (n_cell_types, n_genes)
+        Transformed reference signatures.
+    weights : ndarray of shape (n_genes,)
+        Per-gene weights.
+
+    Returns
+    -------
+    Y_w : array-like of shape (n_spots, n_genes)
+        Weighted spatial data (CSR if the input was sparse, else dense).
+    X_w : ndarray of shape (n_cell_types, n_genes)
+        Weighted reference signatures.
+    """
+    if sparse.issparse(Y_tilde):
+        Y_w = (Y_tilde @ sparse.diags(weights)).tocsr()
+    else:
+        Y_w = Y_tilde * weights[None, :]
+    X_w = np.asarray(X_tilde) * weights[None, :]
+    return Y_w, X_w
 
 
 def build_sparse_rademacher_matrix(

@@ -80,13 +80,11 @@ def main():
 
     # Create model
     model = FlashDeconv(
-        sketch_dim=256,
         lambda_spatial="auto",
         rho_sparsity=0.01,
         n_hvg=1000,
         n_markers_per_type=30,
         k_neighbors=6,
-        max_iter=100,
         verbose=True,
     )
 
