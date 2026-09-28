@@ -6,11 +6,14 @@
 [![Python 3.9–3.14](https://img.shields.io/badge/python-3.9%20%E2%80%93%203.14-blue.svg)](https://www.python.org/downloads/)
 [![DOI](https://zenodo.org/badge/1114934837.svg)](https://doi.org/10.5281/zenodo.18109003)
 
-**Estimate spatial cell-type proportions at atlas scale.**
+**Cell-type proportions for every bin of million-bin spatial transcriptomics.**
 
-FlashDeconv estimates cell type proportions from spatial transcriptomics data (Visium, Visium HD, Stereo-seq). It is designed for large-scale analyses where computational efficiency is essential, using reference-derived gene weighting and sparse spatial regularization.
+FlashDeconv estimates the cell-type composition of each spot or bin in spatial transcriptomics data (Visium, Visium HD, Stereo-seq) from a single-cell reference.
 
-> **Paper:** Yang, C., Zhang, X. & Chen, J. FlashDeconv enables atlas-scale, multi-resolution spatial deconvolution via structure-preserving sketching. *bioRxiv* (2025). [DOI: 10.64898/2025.12.22.696108](https://doi.org/10.64898/2025.12.22.696108)
+- **Fast:** one million Visium HD bins in about 40 seconds on a CPU node.
+- **Accurate:** ranks first of 13 methods on the Spotless benchmark and stays accurate as bins become sparse.
+- **Deterministic:** the same data and reference always give the same proportions.
+- **Self-checking:** flags tissue that the reference cannot explain and names the missing cell types.
 
 ---
 
@@ -20,197 +23,127 @@ FlashDeconv estimates cell type proportions from spatial transcriptomics data (V
 pip install "flashdeconv[io,scanpy]"
 ```
 
-Requires Python 3.9–3.14. This installs the dependencies used in the Quick Start below. For development or additional I/O support, see [Installation Options](#installation-options).
+Requires Python 3.9–3.14. The core package (`pip install flashdeconv`) needs only NumPy, SciPy and Numba; the `io` and `scanpy` extras add AnnData support.
 
----
-
-## Quick Start
+## Quick start
 
 ```python
 import scanpy as sc
 import flashdeconv as fd
 
-# Load count matrices, spatial coordinates, and reference cell-type labels
-adata_st = sc.read_h5ad("spatial.h5ad")
-adata_ref = sc.read_h5ad("reference.h5ad")
+adata_st = sc.read_h5ad("spatial.h5ad")      # raw counts, coordinates in .obsm["spatial"]
+adata_ref = sc.read_h5ad("reference.h5ad")   # raw counts, labels in .obs["cell_type"]
 
-# Deconvolve
 fd.tl.deconvolve(adata_st, adata_ref, cell_type_key="cell_type")
 
-# Rows are spatial locations; columns are reference cell types
-proportions = adata_st.obsm["flashdeconv"]
-print(proportions.head())
+proportions = adata_st.obsm["flashdeconv"]   # locations × cell types, rows sum to 1
 ```
 
-The example expects raw counts in `.X`, spatial coordinates in `adata_st.obsm["spatial"]`, and reference labels in `adata_ref.obs["cell_type"]`. If counts are stored in layers, pass `layer_st="counts"` and `layer_ref="counts"`. Match gene identifiers across datasets before running; the AnnData interface intersects and aligns shared genes.
+Shared genes are matched by name. If counts are stored in layers, pass `layer_st="counts"` and `layer_ref="counts"`. FlashDeconv is also available in [ChatSpatial](https://github.com/cafferychen777/ChatSpatial), which runs spatial analyses through natural language.
 
-FlashDeconv is also available as a tool in [ChatSpatial](https://github.com/cafferychen777/ChatSpatial), an MCP server for spatial transcriptomics — run deconvolution through natural language from any compatible client.
+## Check the reference
 
----
+A reference that lacks a cell type present in the tissue forces the model to explain those transcripts with the wrong types. The reference diagnostic scores every bin for counts that no mixture of reference profiles can explain, and reports the genes behind the misfit:
 
-<a id="algorithm"></a>
+```python
+from flashdeconv import FlashDeconv, reference_fit_scores, unexplained_genes
+from flashdeconv.io import prepare_data
+
+Y, X, coords, cell_types, genes = prepare_data(adata_st, adata_ref, cell_type_key="cell_type")
+model = FlashDeconv().fit(Y, X, coords, cell_type_names=cell_types)
+
+scores = reference_fit_scores(model)
+flagged = scores["flag_pooled"]               # bins the reference cannot explain
+print(f"{flagged.mean():.1%} of bins flagged (about 5% expected by chance)")
+
+top = unexplained_genes(model, flagged, gene_names=genes)
+print(top["gene"][:20])                       # markers of the missing cell types
+```
+
+A flagged fraction well above 5%, concentrated in coherent regions, points to a missing lineage; the unexplained genes identify it. `suggest_missing_types` ranks candidate types from a broader atlas.
 
 ## How it works
 
 [![FlashDeconv framework](https://raw.githubusercontent.com/cafferychen777/flashdeconv/main/paper/figures/figure1.svg)](https://github.com/cafferychen777/flashdeconv/blob/main/paper/figures/figure1.pdf)
 
-1. Select the union of spatial highly variable genes and reference markers; derive leverage scores from the reference signatures.
-2. Apply the selected preprocessing (by default `log1p` of expression normalized to 10,000 counts per spot or cell type) and a shared deterministic leverage-weighted gene representation to spatial and reference expression: each selected gene is scaled by its exact expected weight in a column-normalized leverage-weighted CountSketch with `sketch_dim` buckets (default 512), averaged analytically over the random bucket assignment. No random projection is drawn, so results do not depend on `random_state`. The previous randomized CountSketch projection (uniform hashing, random signs, leverage-weighted amplitudes) remains available with `gene_weighting="countsketch"`.
-3. Construct a sparse spatial neighbor graph and fit non-negative regression coefficients with spatial smoothing and an L1 penalty.
-4. Normalize each coefficient row to obtain estimated cell-type proportions.
+1. **Genes.** Select highly variable genes of the spatial data together with marker genes of each reference cell type, and log-normalize both datasets (counts per 10,000, `log1p`).
+2. **Weights.** Weight each gene by its leverage score in the reference, a measure of how strongly it separates cell types. Discriminative genes dominate the fit, which keeps sparse bins accurate.
+3. **Regression.** Fit non-negative abundances with a sparse spatial-graph penalty that shares information between neighbouring bins and an L1 penalty that favours sparse compositions:
 
-The regression operates on the weighted (or, in legacy mode, sketched) matrices:
+   ```text
+   minimize  ½‖Y_w − β X_w‖² + ½ λ Tr(βᵀ L β) + ρ ‖β‖₁   subject to  β ≥ 0
+   ```
 
-```text
-minimize  ½‖Y_s − βX_s‖²_F + ½λ Tr(βᵀLβ) + ρ_eff‖β‖₁,  subject to β ≥ 0
-```
+   `Y_w` (bins × genes) and `X_w` (cell types × genes) are the weighted data and reference, and `L` is the Laplacian of a *k*-nearest-neighbour graph. Both penalties are scaled automatically.
+4. **Proportions.** Normalize each row of β to obtain cell-type proportions.
 
-Here `Y_s` is N × p and `X_s` is K × p, with p the number of selected genes (p = `sketch_dim` in legacy mode), and `L = D − A` is the spatial graph Laplacian. The solver scales the user parameter as `ρ_eff = rho_sparsity × mean(diag(X_s X_sᵀ))`.
-
-`beta_` contains regression coefficients, not absolute cell counts. `proportions_` contains their row-normalized values, `P[i, k] = β[i, k] / sum(β[i, :])`. An all-zero coefficient row is assigned a uniform distribution as a numerical fallback, not evidence of equal biological composition.
-
-With fixed gene count, cell-type count, iteration count, and bounded graph degree, the regression stage has linear time and memory scaling in the number of spots. End-to-end runtime also includes preprocessing and neighbor search; it is not an unconditional O(N) guarantee. Radius graphs can become dense when many spots fall within the radius.
-
----
+A block coordinate descent solver updates all bins in parallel; its cost grows linearly with the number of bins.
 
 ## Performance
 
-### Scalability
+**Speed** on real Visium HD colorectal cancer bins (18,082 genes, 38 cell types, 32 CPU threads):
 
-| Spots | Time | Memory |
-|:------|:-----|:-------|
-| 10,000 | < 1 sec | < 1 GB |
-| 100,000 | ~4 sec | ~2 GB |
-| 1,000,000 | ~3 min | ~21 GB |
+| Bins | Time | Peak memory |
+|:-----|:-----|:------------|
+| 10,000 | 1.9 s | 1.9 GB |
+| 100,000 | 5.4 s | 2.7 GB |
+| 1,000,000 | 40 s | 12.6 GB |
 
-Reported on MacBook Pro M2 Max (32GB unified memory), CPU-only. The million-spot result uses simulated data. These timings describe the benchmark configurations, not a runtime guarantee for arbitrary gene counts, cell-type counts, or graph settings.
+**Accuracy** on the 54 silver-standard datasets of the [Spotless benchmark](https://github.com/saeyslab/spotless-benchmark) (mean Pearson correlation with the true proportions):
 
-### Accuracy
+| FlashDeconv | RCTD | Cell2location |
+|:------------|:-----|:--------------|
+| 0.946 | 0.934 | 0.918 |
 
-On the 54 Silver Standard datasets (6 tissues × 9 abundance patterns) from the [Spotless benchmark](https://github.com/saeyslab/spotless-benchmark):
-
-| Metric | FlashDeconv | RCTD | Cell2Location |
-|:-------|:------------|:-----|:--------------|
-| Mean Pearson correlation | 0.944 | 0.934 | 0.918 |
-
-Values follow the current manuscript’s unified benchmark table (Silver Standard rows). These datasets use simulated mixtures; rankings differ on real-data benchmarks. See the [reproducibility repository](https://github.com/cafferychen777/flashdeconv-reproducibility) for benchmark materials. Evaluate performance on data and reference conditions relevant to your application.
-
----
+Benchmark details and analysis scripts are in the [manuscript scripts repository](https://github.com/cafferychen777/flashdeconv-reproducibility).
 
 ## API
 
-See the [Quick Start](#quick-start) for the AnnData interface and the [full API reference](docs/api_reference.md) for methods, I/O utilities, and evaluation functions.
+**AnnData:** `fd.tl.deconvolve(adata_st, adata_ref, cell_type_key=...)` stores proportions in `adata_st.obsm["flashdeconv"]` and the dominant type in `adata_st.obs["flashdeconv_dominant"]`.
 
-### NumPy
-
-Provide spatial counts `Y` (N × G, dense or SciPy sparse), reference signatures `X` (K × G), and coordinates `coords` (N × 2 or N × 3). The columns of `Y` and `X` must contain the same genes in the same order, and both must be non-negative and finite.
+**NumPy:** provide spatial counts `Y` (bins × genes, dense or sparse), reference signatures `X` (cell types × genes, mean counts per type) with the same genes in the same order, and coordinates `coords` (bins × 2 or 3):
 
 ```python
 from flashdeconv import FlashDeconv
 
-model = FlashDeconv(
-    sketch_dim=512,
-    lambda_spatial="auto",
-    n_hvg=2000,
-    k_neighbors=6,
-    random_state=0,
-)
+model = FlashDeconv()
 proportions = model.fit_transform(Y, X, coords)
 ```
 
-### Parameters
-
 | Parameter | Default | Description |
 |:----------|:--------|:------------|
-| `gene_weighting` | "expected" | Gene representation: "expected" (deterministic expected leverage-weighted CountSketch weights) or "countsketch" (legacy randomized projection) |
-| `sketch_dim` | 512 | CountSketch bucket count d (sets the expected weights; projection dimension in legacy mode) |
-| `lambda_spatial` | "auto" | Spatial regularization, automatically scaled by default |
-| `rho_sparsity` | 0.01 | L1 sparsity penalty (dimensionless fraction) |
-| `n_hvg` | 2000 | Highly variable genes |
-| `n_markers_per_type` | 50 | Marker genes per cell type |
-| `spatial_method` | "knn" | Graph method: "knn", "radius", or "grid" |
-| `k_neighbors` | 6 | Spatial graph neighbors (for "knn") |
-| `radius` | None | Neighbor radius (required for "radius") |
-| `max_iter` | 1000 | Maximum solver iterations |
-| `tol` | 1e-4 | Convergence tolerance (relative change of the coefficients) |
-| `preprocess` | "log_cpm" | Normalization: "log_cpm" (log1p of counts per 10,000), "pearson", or "raw" |
-| `random_state` | 0 | Random seed for the legacy CountSketch projection (unused by the default) |
+| `lambda_spatial` | `"auto"` | Spatial regularization strength |
+| `rho_sparsity` | `0.01` | L1 sparsity strength |
+| `n_hvg` | `2000` | Highly variable genes |
+| `n_markers_per_type` | `50` | Marker genes per cell type |
+| `spatial_method` | `"knn"` | Spatial graph: `"knn"`, `"radius"` or `"grid"` |
+| `k_neighbors` | `6` | Neighbours in the *k*-NN graph |
+| `max_iter`, `tol` | `1000`, `1e-4` | Solver iteration limit and convergence tolerance |
 
-### Output
+After fitting, `model.proportions_` holds the proportions, `model.beta_` the unnormalized abundances and `model.info_` convergence information. Uncertainty estimates (`compute_uncertainty`, `bootstrap_uncertainty`) are model-based and reflect sampling noise under the fitted model. The [API reference](docs/api_reference.md) documents all parameters and functions.
 
-| Attribute | Description |
-|:----------|:------------|
-| `proportions_` | Cell type proportions (N × K), sum to 1 |
-| `beta_` | Unnormalized regression coefficients (N × K) |
-| `info_` | Convergence statistics |
+## Tips
 
----
-
-## Input Formats
-
-- **Spatial data:** AnnData, NumPy array (N × G), or SciPy sparse matrix
-- **Reference:** AnnData (aggregated by cell type) or NumPy array (K × G)
-- **Coordinates:** Extracted from `adata.obsm["spatial"]` or NumPy array (N × 2 or N × 3)
-
----
-
-## Reference quality and limitations
-
-- Use reference annotations supported by marker expression, and check that expected tissue cell types are represented. Missing types can distort the estimated proportions of included types.
-- Assess signature stability across cells or donors. Required sample size depends on heterogeneity, sequencing depth, and separation between types; there is no universal cell-count or marker-fold-change cutoff.
-- Inspect highly correlated signatures and consider a coarser annotation when subtypes cannot be distinguished reliably.
-- Review labels such as `Unknown` or `Unassigned` before aggregation. A heterogeneous pool can produce an ambiguous signature, but the label alone is not a reason to discard a coherent population.
-- Spatial smoothing can blur sharp boundaries. Compare smoothing strengths when boundaries or rare populations are central to the analysis.
-- Estimated proportions depend on reference quality and preprocessing; they are not direct measurements of cell numbers. The opt-in uncertainty estimates (`compute_uncertainty`, `bootstrap_uncertainty`) are model-based: they reflect sampling uncertainty under the fitted model and exclude reference–tissue mismatch, missing cell types and model misspecification, which usually dominate the error. Use them to compare estimate stability across spots and types, not as calibrated intervals for true proportions.
-
----
-
-## Installation Options
-
-```bash
-# Standard
-pip install flashdeconv
-
-# With AnnData support
-pip install "flashdeconv[io]"
-
-# Development
-git clone https://github.com/cafferychen777/flashdeconv.git
-cd flashdeconv && pip install -e ".[dev]"
-```
-
-**Requirements:** Python 3.9–3.14, numpy, scipy, numba. Optional: scanpy, anndata.
-
----
+- **Reference.** Include every cell type expected in the tissue and check with the reference diagnostic. Merge subtypes whose profiles are nearly identical.
+- **Single-cell platforms.** For segmented data such as Xenium, set `lambda_spatial=0` or aggregate cells into multi-cell bins.
+- **Stereo-seq.** See the [Stereo-seq guide](docs/stereo_seq_guide.md).
 
 ## Citation
 
-If you use FlashDeconv in your research, please cite:
-
-> Yang, C., Zhang, X. & Chen, J. FlashDeconv enables atlas-scale, multi-resolution spatial deconvolution via structure-preserving sketching. *bioRxiv* (2025). [DOI: 10.64898/2025.12.22.696108](https://doi.org/10.64898/2025.12.22.696108)
+> Yang, C., Chen, J. & Zhang, X. FlashDeconv reveals resolution horizons in atlas-scale spatial transcriptomics. *bioRxiv* (2025). [doi:10.64898/2025.12.22.696108](https://doi.org/10.64898/2025.12.22.696108)
 
 ```bibtex
 @article{yang2025flashdeconv,
-  title={FlashDeconv enables atlas-scale, multi-resolution spatial deconvolution
-         via structure-preserving sketching},
-  author={Yang, Chen and Zhang, Xianyang and Chen, Jun},
-  journal={bioRxiv},
-  year={2025},
-  doi={10.64898/2025.12.22.696108}
+  title   = {FlashDeconv reveals resolution horizons in atlas-scale spatial transcriptomics},
+  author  = {Yang, Chen and Chen, Jun and Zhang, Xianyang},
+  journal = {bioRxiv},
+  year    = {2025},
+  doi     = {10.64898/2025.12.22.696108}
 }
 ```
 
----
+To cite a specific software version, use its [Zenodo DOI](https://doi.org/10.5281/zenodo.18109003).
 
-## Resources
+## License
 
-- [Paper reproducibility code](https://github.com/cafferychen777/flashdeconv-reproducibility)
-- [Stereo-seq guide](docs/stereo_seq_guide.md) — Platform-specific considerations
-- [GitHub Issues](https://github.com/cafferychen777/flashdeconv/issues)
-- [BSD-3-Clause License](LICENSE)
-
----
-
-## Acknowledgments
-
-We thank the developers of [Spotless](https://github.com/saeyslab/spotless-benchmark), [Cell2Location](https://github.com/BayraktarLab/cell2location), [RCTD](https://github.com/dmcable/spacexr), [CARD](https://github.com/YingMa0107/CARD), and other deconvolution methods whose work contributed to this field.
+BSD 3-Clause; see [LICENSE](LICENSE). Questions and bug reports: [GitHub Issues](https://github.com/cafferychen777/flashdeconv/issues).

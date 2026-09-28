@@ -22,7 +22,7 @@ keywords:
   - Visium HD
 preferred-citation:
   type: article
-  title: "FlashDeconv enables atlas-scale, multi-resolution spatial deconvolution via structure-preserving sketching"
+  title: "FlashDeconv reveals resolution horizons in atlas-scale spatial transcriptomics"
   authors:
     - family-names: "Yang"
       given-names: "Chen"
