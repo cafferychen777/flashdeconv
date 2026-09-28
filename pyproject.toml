@@ -66,6 +66,16 @@ Paper = "https://doi.org/10.64898/2025.12.22.696108"
 [tool.hatch.build.targets.wheel]
 packages = ["flashdeconv"]
 
+[tool.hatch.build.targets.sdist]
+include = [
+    "flashdeconv",
+    "tests",
+    "README.md",
+    "LICENSE",
+    "CITATION.cff",
+    "pyproject.toml",
+]
+
 [tool.black]
 line-length = 100
 target-version = ["py39", "py310", "py311", "py312"]

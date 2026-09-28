@@ -22,6 +22,48 @@ def _validate_coords(coords: np.ndarray) -> None:
         )
 
 
+def _knn_indices_tiebreak(coords: np.ndarray, k: int) -> np.ndarray:
+    """
+    Indices of the ``k`` nearest other spots, ties broken by spot index.
+
+    The order in which ``cKDTree.query`` returns equidistant points depends
+    on the tree traversal and differs across platforms (e.g. macOS arm64 vs
+    Linux x86-64). On regular grids (Visium array coordinates, simulated
+    grids) the k-th nearest distance is typically shared by several spots,
+    so the graph itself would differ. Here neighbors are ranked by
+    (distance, spot index) over *all* candidates tied with the k-th
+    distance, which makes the graph a function of the coordinates only.
+
+    Returns an array of shape (n_spots, k); requires 1 <= k <= n_spots - 1.
+    """
+    n = coords.shape[0]
+    tree = cKDTree(coords)
+    spot_idx = np.arange(n)
+    out = np.empty((n, k), dtype=np.intp)
+    todo = spot_idx
+    m = min(k + 2, n)
+    while todo.size:
+        dist, ind = tree.query(coords[todo], k=m)
+        dist = dist.reshape(len(todo), m)
+        ind = ind.reshape(len(todo), m)
+        # Drop the spot itself (it may be absent when it has > m-1 duplicates);
+        # sort remaining candidates by (distance, index).
+        not_self = ind != todo[:, None]
+        dist = np.where(not_self, dist, np.inf)
+        order = np.lexsort((ind, dist), axis=-1)
+        dist = np.take_along_axis(dist, order, axis=1)
+        ind = np.take_along_axis(ind, order, axis=1)
+        # All candidates tied with the k-th neighbor were retrieved iff the
+        # farthest retrieved other spot is strictly farther (or all spots
+        # were retrieved).
+        n_other = m - 1  # at least m - 1 non-self candidates per row
+        complete = (m == n) | (dist[:, n_other - 1] > dist[:, k - 1])
+        out[todo[complete]] = ind[complete, :k]
+        todo = todo[~complete]
+        m = min(2 * m, n)
+    return out
+
+
 def build_knn_graph(
     coords: np.ndarray,
     k: int = 6,
@@ -56,21 +98,9 @@ def build_knn_graph(
             return sparse.eye(n_spots, dtype=np.float64, format="csr")
         return sparse.csr_matrix((n_spots, n_spots), dtype=np.float64)
 
-    # Build KD-tree for efficient neighbor search
-    tree = cKDTree(coords)
-
-    # Query k_actual+1 neighbors (normally including the spot itself)
-    _, indices = tree.query(coords, k=k_actual + 1)
-
     spot_idx = np.arange(n_spots)
-    keep = indices != spot_idx[:, None]  # drop self
-    # With more than k_actual exact duplicates of a spot's coordinates, the
-    # query can return k_actual+1 other spots and not the spot itself; drop
-    # the farthest one so that every spot keeps exactly k_actual neighbors.
-    keep[keep.all(axis=1), -1] = False
-
+    col_idx = _knn_indices_tiebreak(coords, k_actual).ravel()
     row_idx = np.repeat(spot_idx, k_actual)
-    col_idx = indices[keep]
     if include_self:
         row_idx = np.concatenate([row_idx, spot_idx])
         col_idx = np.concatenate([col_idx, spot_idx])

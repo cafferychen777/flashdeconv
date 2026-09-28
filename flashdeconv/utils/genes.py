@@ -15,6 +15,17 @@ from typing import Union, Tuple
 ArrayLike = Union[np.ndarray, sparse.spmatrix]
 
 
+def _argsort_desc(values: np.ndarray) -> np.ndarray:
+    """
+    Indices that sort ``values`` in descending order, ties by ascending index.
+
+    ``np.argsort``'s default (unstable) algorithm orders ties differently
+    across platforms (SIMD sorting kernels on x86-64 vs arm64), which could
+    change which genes are selected at a tie on the selection boundary.
+    """
+    return np.argsort(-np.asarray(values), kind="stable")
+
+
 def select_hvg(
     Y: ArrayLike,
     n_top: int = 2000,
@@ -140,12 +151,12 @@ def select_hvg(
 
     if len(valid_idx) < n_top:
         # If not enough genes pass filters, take top by dispersion
-        sorted_idx = np.argsort(normalized_dispersion)[::-1]
+        sorted_idx = _argsort_desc(normalized_dispersion)
         hvg_idx = sorted_idx[:n_top]
     else:
         # Take top n_top by normalized dispersion
         valid_disp = normalized_dispersion[valid_idx]
-        top_idx = np.argsort(valid_disp)[::-1][:n_top]
+        top_idx = _argsort_desc(valid_disp)[:n_top]
         hvg_idx = valid_idx[top_idx]
 
     return np.sort(hvg_idx)
@@ -226,11 +237,11 @@ def select_markers(
         if len(top_genes) > 0:
             # Rank by specificity
             gene_spec = specificity[top_genes]
-            sorted_idx = np.argsort(gene_spec)[::-1][:n_markers]
+            sorted_idx = _argsort_desc(gene_spec)[:n_markers]
             markers_k = top_genes[sorted_idx]
         else:
             # Fallback: genes with highest expression in this cell type
-            sorted_idx = np.argsort(X_norm[k])[::-1][:n_markers]
+            sorted_idx = _argsort_desc(X_norm[k])[:n_markers]
             markers_k = sorted_idx
 
         all_markers.extend(markers_k)

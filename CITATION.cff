@@ -1,7 +1,10 @@
 cff-version: 1.2.0
-message: "If you use this software, please cite it as below."
-type: article
-title: "FlashDeconv enables atlas-scale, multi-resolution spatial deconvolution via structure-preserving sketching"
+message: "If you use this software, please cite the article below."
+type: software
+title: "FlashDeconv"
+abstract: "Deterministic, leverage-weighted cell-type deconvolution for million-bin spatial transcriptomics, with reference diagnostics."
+version: 0.2.0
+date-released: "2026-09-28"
 authors:
   - family-names: "Yang"
     given-names: "Chen"
@@ -10,9 +13,24 @@ authors:
     given-names: "Jun"
   - family-names: "Zhang"
     given-names: "Xianyang"
-doi: "10.64898/2025.12.22.696108"
-url: "https://doi.org/10.64898/2025.12.22.696108"
 repository-code: "https://github.com/cafferychen777/flashdeconv"
+url: "https://pypi.org/project/flashdeconv/"
 license: BSD-3-Clause
-year: 2025
-journal: "bioRxiv"
+keywords:
+  - spatial transcriptomics
+  - cell-type deconvolution
+  - Visium HD
+preferred-citation:
+  type: article
+  title: "FlashDeconv enables atlas-scale, multi-resolution spatial deconvolution via structure-preserving sketching"
+  authors:
+    - family-names: "Yang"
+      given-names: "Chen"
+    - family-names: "Chen"
+      given-names: "Jun"
+    - family-names: "Zhang"
+      given-names: "Xianyang"
+  doi: "10.64898/2025.12.22.696108"
+  url: "https://doi.org/10.64898/2025.12.22.696108"
+  journal: "bioRxiv"
+  year: 2025

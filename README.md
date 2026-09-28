@@ -52,7 +52,7 @@ FlashDeconv is also available as a tool in [ChatSpatial](https://github.com/caff
 
 ## How it works
 
-[![FlashDeconv framework](paper/figures/figure1.svg)](paper/figures/figure1.pdf)
+[![FlashDeconv framework](https://raw.githubusercontent.com/cafferychen777/flashdeconv/main/paper/figures/figure1.svg)](https://github.com/cafferychen777/flashdeconv/blob/main/paper/figures/figure1.pdf)
 
 1. Select the union of spatial highly variable genes and reference markers; derive leverage scores from the reference signatures.
 2. Apply the selected preprocessing (by default `log1p` of expression normalized to 10,000 counts per spot or cell type) and a shared deterministic leverage-weighted gene representation to spatial and reference expression: each selected gene is scaled by its exact expected weight in a column-normalized leverage-weighted CountSketch with `sketch_dim` buckets (default 512), averaged analytically over the random bucket assignment. No random projection is drawn, so results do not depend on `random_state`. The previous randomized CountSketch projection (uniform hashing, random signs, leverage-weighted amplitudes) remains available with `gene_weighting="countsketch"`.
