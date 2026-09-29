@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="170mm" height="97.6171875mm" viewBox="0 0 2048 1176">
   <title>FlashDeconv workflow</title>
-  <desc>FlashDeconv framework aligned with the revised Methods: reference-derived leverage scores yield deterministic expected CountSketch amplitude weights. Log-normalized selected profiles are scaled gene-wise without projection. A symmetric spatial graph and Gram-scaled penalties enter nonnegative regression with precomputed Gram and cross-product matrices. Row normalization yields proportions; an optional reference diagnostic reports unexplained genes and candidate missing types. All maps are schematic.</desc>
+  <desc>FlashDeconv framework aligned with the revised Methods: reference-derived leverage scores yield deterministic expected gene weights derived from normalized amplitudes under random grouping. Log-normalized selected profiles are scaled gene-wise without projection. A symmetric spatial graph and Gram-scaled penalties enter nonnegative regression with precomputed Gram and cross-product matrices. Row normalization yields proportions; an optional reference diagnostic reports unexplained genes and candidate missing types. All maps are schematic.</desc>
   <defs>
     <style>
 text{font-family:Arial,Helvetica,sans-serif;fill:#17171c}
@@ -555,7 +555,7 @@ text{font-family:Arial,Helvetica,sans-serif;fill:#17171c}
       <text x="861.0" y="494.0" font-size="30" font-weight="400" id="polished-text-24">:</text>
       <text x="874.0" y="494.0" font-size="30" font-weight="400" font-family="STIX Two Math, STIXGeneral, Times New Roman, serif" id="polished-text-25">K × g</text>
     </g>
-    <text x="589" y="406" font-size="26" text-anchor="middle" id="selected-gene-union">HVGs ∪ markers</text>
+    <text x="589" y="406" font-size="26" text-anchor="middle" id="selected-gene-union">HVGs <tspan style="font-family:STIX Two Math, STIXGeneral, serif">∪</tspan> markers</text>
     <path id="input-merge-upper" d="M350 192H392Q403 192 403 204V283Q403 297 414 297" fill="none" stroke="#786c88" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
     <path id="input-merge-lower" d="M350 423H392Q403 423 403 411V311Q403 297 414 297" fill="none" stroke="#786c88" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
     <path id="input-merge-output" d="M414 297H440" fill="none" stroke="#786c88" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#workflow-arrowhead)" />
@@ -613,8 +613,8 @@ text{font-family:Arial,Helvetica,sans-serif;fill:#17171c}
     <rect x="1467" y="269" width="11" height="4" fill="#8b789f" stroke="#655c70" stroke-width="1.2" />
     <path d="M1498 218H1532" fill="none" stroke="#786c88" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#workflow-arrowhead)" />
     <text x="1766" y="117" font-size="30" text-anchor="middle" font-weight="700">Expected gene weights</text>
-    <text x="1546" y="265" font-size="26">Average over bucket assignments</text>
-    <text x="1546" y="301" font-size="26">d = 512; deterministic expectation</text>
+    <text x="1546" y="265" font-size="25">S<tspan font-size="20" baseline-shift="sub">j</tspan>: summed squared amplitudes</text>
+    <text x="1546" y="301" font-size="25">Average over groupings (d = 512)</text>
     <g id="deterministic-gene-weights" transform="translate(1086 366)">
       <rect x="0" y="0" width="20" height="20" fill="#ded9e5" stroke="#bdb5c5" stroke-width="1.2" />
       <rect x="20" y="0" width="20" height="20" fill="#fff" stroke="#bdb5c5" stroke-width="1.2" />
@@ -708,7 +708,7 @@ text{font-family:Arial,Helvetica,sans-serif;fill:#17171c}
     <text x="1802" y="504" font-size="28" text-anchor="middle">N × g</text>
     <text x="1930" y="504" font-size="28" text-anchor="middle">K × g</text>
     <path d="M1630 417H1738" fill="none" stroke="#786c88" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#workflow-arrowhead)" />
-    <text x="1530" y="558" font-size="28" text-anchor="middle">All selected genes retained · no random projection</text>
+    <text x="1530" y="558" font-size="28" text-anchor="middle">Deterministic gene scaling · all selected genes retained</text>
     <path d="M991 297H1044V211H1072" fill="none" stroke="#786c88" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#workflow-arrowhead)" />
   <g id="expected-weight-equation"><text x="1546.0" y="170" font-size="29" xml:space="preserve">w</text><text x="1569.94" y="179" font-size="22" xml:space="preserve">j</text><text x="1577.83" y="170" font-size="29" xml:space="preserve"> = E[</text><text x="1638.29" y="170" font-size="29" xml:space="preserve">a</text><text x="1657.41" y="179" font-size="22" xml:space="preserve">j</text><text x="1665.3" y="170" font-size="29" xml:space="preserve"> / √(</text><text x="1715.05" y="170" font-size="29" xml:space="preserve">a</text><text x="1734.18" y="179" font-size="22" xml:space="preserve">j</text><text x="1734.18" y="155" font-size="22" xml:space="preserve">2</text><text x="1749.41" y="170" font-size="29" xml:space="preserve"> + </text><text x="1782.47" y="170" font-size="29" xml:space="preserve">S</text><text x="1804.81" y="179" font-size="22" xml:space="preserve">j</text><text x="1812.7" y="170" font-size="29" xml:space="preserve">) ]</text></g><g id="amplitude-equation"><text x="1546.0" y="221" font-size="28" xml:space="preserve">a</text><text x="1564.57" y="230" font-size="22" xml:space="preserve">j</text><text x="1572.46" y="221" font-size="28" xml:space="preserve"> = clip(√(g </text><text x="1703.77" y="221" font-size="28" xml:space="preserve">ℓ</text><text x="1715.82" y="230" font-size="22" xml:space="preserve">j</text><text x="1723.7" y="221" font-size="28" xml:space="preserve">), 0.1, 10)</text></g><g id="weighted-spatial-equation"><text x="1260.0" y="417" font-size="32" xml:space="preserve">Y</text><text x="1284.34" y="426" font-size="22" xml:space="preserve">w</text><text x="1303.23" y="417" font-size="32" xml:space="preserve"> = </text><text x="1339.7" y="417" font-size="32" xml:space="preserve">Y</text><path d="M1340.70 389.48Q1345.04 385.48 1350.37 389.48T1360.04 389.48" fill="none" stroke="#17171c" stroke-width="1.5" stroke-linecap="round" /><text x="1363.04" y="417" font-size="32" xml:space="preserve"> diag(w)</text></g><g id="weighted-reference-equation"><text x="1260.0" y="468" font-size="32" xml:space="preserve">X</text><text x="1284.34" y="477" font-size="22" xml:space="preserve">w</text><text x="1303.23" y="468" font-size="32" xml:space="preserve"> = </text><text x="1339.7" y="468" font-size="32" xml:space="preserve">X</text><path d="M1340.70 440.48Q1345.04 436.48 1350.37 440.48T1360.04 440.48" fill="none" stroke="#17171c" stroke-width="1.5" stroke-linecap="round" /><text x="1363.04" y="468" font-size="32" xml:space="preserve"> diag(w)</text></g></g>
   <g id="panel-c">
